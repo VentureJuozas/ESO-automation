@@ -147,13 +147,13 @@ export default function StepSheet({
       </div>
       <div className="sheet-body">
         {skipped && <p className="hint bad-hint">Šis mazgas praleistas — eiga šakojo į eskalaciją.</p>}
-        {(event?.engineer || meta.engineer) && <p className="hint">{event?.engineer || meta.engineer}</p>}
         {tab === "output" && (
           <>
             <Viz ev={event} section3={section3} setSection3={setSection3} canEdit={canEdit} runId={runId} document={document} audit={audit} />
             {!event && showForm && <p className="empty" style={{ padding: 12 }}>Paleiskite eigą — išskaityti laukai ir žemėlapis atsiras čia.</p>}
           </>
         )}
+        {(event?.engineer || meta.engineer) && <p className="hint">{event?.engineer || meta.engineer}</p>}
         {tab === "params" && (
           <div className="section">
             <h3>Įvestis ir kvietimas</h3>

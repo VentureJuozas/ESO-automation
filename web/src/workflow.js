@@ -4,7 +4,7 @@ export const NODE_W = 220;
 export const NODE_H = 76;
 export const WORLD_W = 1120;
 export const WORLD_H = 640;
-export const INSPECTOR_PAD = 392;
+export const INSPECTOR_PAD = 432;
 
 const X = [36, 300, 564, 828];
 const Y = [36, 196, 356, 516];

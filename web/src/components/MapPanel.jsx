@@ -5,7 +5,8 @@ import { fmtLt } from "../steps.js";
 import SourceTags from "./SourceTags.jsx";
 
 function drawMap(el, map, pickable, onPick) {
-  const m = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true });
+  if (!el) return null;
+  const m = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: !pickable });
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 19,
     attribution: "Tiles © Esri · topologija sintetinė",
