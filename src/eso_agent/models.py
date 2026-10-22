@@ -37,6 +37,9 @@ class ParsedRequest(BaseModel):
     parse_mode: Literal["form", "offline", "llm"] = "offline"
     warnings: list[str] = Field(default_factory=list)
     source_tags: list[SourceTag] = Field(default_factory=list)
+    source_text: str = ""
+    extraction: dict[str, Any] = Field(default_factory=dict)
+    highlights: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ToolEvent(BaseModel):

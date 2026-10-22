@@ -25,7 +25,24 @@ from eso_agent.graph import (
 )
 from eso_agent.llm import llm_mode
 from eso_agent.rules import MANUAL_TIME_ASSUMPTION_MINUTES, MANUAL_TIME_ASSUMPTION_NOTE
-from eso_agent.scenarios import all_scenarios, get_scenario
+from eso_agent.scenarios import INTAKE_SAMPLES, all_scenarios, get_scenario
+from eso_agent.timing import comparison_payload, replay_ms
+
+PIPELINE_ORDER = [
+    "parse_request",
+    "locate_connection_point",
+    "select_solution",
+    "size_breaker",
+    "check_capacity",
+    "check_voltage_drop",
+    "check_reliability",
+    "check_future",
+    "draft_ts_section3",
+    "estimate_cost",
+    "render_map",
+    "engineer_approval",
+    "issue_ts",
+]
 
 PRE_CHECK = [n_parse, n_locate, n_solution, n_breaker]
 CHECKS = [n_capacity, n_quality, n_reliability, n_future]
@@ -67,8 +84,9 @@ def _value(events: list[dict[str, Any]], started: float, status: str) -> dict[st
     if not any(ev.get("type") == "tool" for ev in events):
         elapsed_ms = int((time.time() - started) * 1000)
     lo, hi = MANUAL_TIME_ASSUMPTION_MINUTES
+    cmp = comparison_payload(events)
     return {
-        "elapsed_ms": elapsed_ms,
+        "elapsed_ms": elapsed_ms or cmp["agent_ms"],
         "status": status,
         "tools_run": rules,
         "source_counts": tags,
@@ -76,6 +94,7 @@ def _value(events: list[dict[str, Any]], started: float, status: str) -> dict[st
         "manual_note": MANUAL_TIME_ASSUMPTION_NOTE,
         "llm_mode": llm_mode(),
         "assumption": True,
+        "comparison": cmp,
     }
 
 
@@ -127,7 +146,25 @@ def snapshot(run: dict[str, Any]) -> dict[str, Any]:
         "value": _value(run["events"], run["started"], run["status"]),
         "llm_mode": llm_mode(),
         "error": run.get("error"),
+        "skipped": _skipped(run),
+        "audit": list(run.get("audit") or []),
+        "overridden": bool(st.get("overridden")),
     }
+
+
+def _skipped(run: dict[str, Any]) -> list[str]:
+    if not run["state"].get("failed") or run["state"].get("overridden"):
+        return []
+    ran = {e.get("tool") for e in run["events"] if e.get("type") == "tool"}
+    fail_at = None
+    for ev in run["events"]:
+        if ev.get("type") == "tool" and (ev.get("outputs") or {}).get("escalate") and ev.get("tool") != "escalate":
+            fail_at = ev.get("tool")
+            break
+    if not fail_at or fail_at not in PIPELINE_ORDER:
+        return [t for t in ("draft_ts_section3", "estimate_cost", "render_map", "engineer_approval", "issue_ts") if t not in ran]
+    idx = PIPELINE_ORDER.index(fail_at)
+    return [t for t in PIPELINE_ORDER[idx + 1 :] if t not in ran]
 
 
 def list_runs() -> list[dict[str, Any]]:
@@ -159,7 +196,10 @@ async def _run_fn(run: dict[str, Any], fn) -> None:
     delay = run.get("delay", _delay())
     if delay:
         await asyncio.sleep(delay)
-    elapsed = int((time.perf_counter() - t0) * 1000)
+    name = FN_TOOL.get(fn, fn.__name__)
+    elapsed = replay_ms(name)
+    if elapsed <= 0:
+        elapsed = int((time.perf_counter() - t0) * 1000)
     result = (run["state"].get("events") or [None])[-1]
     if result:
         ev = _emit_tool(run, result, elapsed)
@@ -171,42 +211,18 @@ async def execute(run_id: str) -> None:
     run["status"] = "running"
     await _broadcast(run, {"type": "status", "status": "running", "id": run_id})
     try:
-        for fn in PRE_CHECK + CHECKS:
+        for fn in PRE_CHECK:
             await _run_fn(run, fn)
-        if run["state"].get("failed"):
-            await _run_fn(run, n_escalate)
-        await _run_fn(run, n_draft)
-        await _run_fn(run, n_cost)
-        await _run_fn(run, n_map)
+        for fn in CHECKS:
+            await _run_fn(run, fn)
+            if run["state"].get("failed"):
+                await _run_fn(run, n_escalate)
+                break
+        if not run["state"].get("failed"):
+            for fn in POST:
+                await _run_fn(run, fn)
         run["status"] = "escalated" if run["state"].get("failed") else "awaiting_approval"
-        interrupt = {
-            "type": "interrupt",
-            "tool": "engineer_approval",
-            "title": "Inžinieriaus patvirtinimas",
-            "title_lt": "Inžinieriaus patvirtinimas",
-            "kind": "human",
-            "failed": bool(run["state"].get("failed")),
-            "status": run["status"],
-            **tool_by_id("engineer_approval"),
-        }
-        # tool_by_id returns extra keys; keep event lean
-        interrupt = {
-            "type": "interrupt",
-            "tool": "engineer_approval",
-            "title": "Inžinieriaus patvirtinimas",
-            "title_lt": "Inžinieriaus patvirtinimas",
-            "kind": "human",
-            "failed": bool(run["state"].get("failed")),
-            "status": run["status"],
-            "rule_ref": tool_by_id("engineer_approval").get("rule_ref"),
-            "engineer": tool_by_id("engineer_approval").get("engineer"),
-            "inputs": {"draft": True, "failed": bool(run["state"].get("failed"))},
-            "outputs": {"waiting": True},
-            "source_tags": ["rule"],
-            "ok": True,
-            "elapsed_ms": 0,
-            "ts": time.time(),
-        }
+        interrupt = _interrupt_event(run)
         run["events"].append(interrupt)
         await _broadcast(run, interrupt)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
@@ -217,7 +233,7 @@ async def execute(run_id: str) -> None:
 
 
 def create_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) -> dict[str, Any]:
-    if scenario_id:
+    if scenario_id and scenario_id not in {None, "", "intake"}:
         sc = get_scenario(scenario_id)
         form = dict(sc["form"])
         text = form.get("text") or text
@@ -238,9 +254,33 @@ def create_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) 
             "failed": False,
         },
         "error": None,
+        "audit": [],
     }
     RUNS[rid] = run
     return run
+
+
+def _interrupt_event(run: dict[str, Any]) -> dict[str, Any]:
+    failed = bool(run["state"].get("failed"))
+    tool = "escalate" if failed else "engineer_approval"
+    meta = tool_by_id(tool)
+    return {
+        "type": "interrupt",
+        "tool": tool,
+        "title": meta.get("title_lt") or ("Perdavimas inžinieriui" if failed else "Inžinieriaus patvirtinimas"),
+        "title_lt": meta.get("title_lt"),
+        "kind": "human" if not failed else "tool",
+        "failed": failed,
+        "status": run["status"],
+        "rule_ref": meta.get("rule_ref"),
+        "engineer": meta.get("engineer"),
+        "inputs": {"failed": failed, "draft": not failed},
+        "outputs": (run["state"].get("escalate") or {}).get("outputs") if failed else {"waiting": True},
+        "source_tags": ["rule"],
+        "ok": True,
+        "elapsed_ms": 0,
+        "ts": time.time(),
+    }
 
 
 async def start_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) -> dict[str, Any]:
@@ -249,15 +289,57 @@ async def start_run(scenario_id: str | None, text: str, form: dict[str, Any] | N
     return snapshot(run)
 
 
-async def resume(run_id: str, decision: str, section3: str | None = None, force: bool = False) -> dict[str, Any]:
+async def resume(
+    run_id: str,
+    decision: str,
+    section3: str | None = None,
+    force: bool = False,
+    override_reason: str | None = None,
+) -> dict[str, Any]:
     run = RUNS[run_id]
-    run["state"]["approval"] = {"decision": decision, "section3": section3, "force": force}
-    if decision == "edit" and section3:
-        await _run_fn(run, n_draft)
-        run["status"] = "escalated" if run["state"].get("failed") else "awaiting_approval"
+    run["state"]["approval"] = {
+        "decision": decision,
+        "section3": section3,
+        "force": False,
+        "override_reason": override_reason,
+    }
+    if decision == "override":
+        reason = (override_reason or "").strip()
+        if len(reason) < 8:
+            raise ValueError("Override reikalauja priežasties (mažiausiai 8 simboliai).")
+        run.setdefault("audit", []).append(
+            {
+                "ts": time.time(),
+                "action": "engineer_override",
+                "reason": reason,
+                "actor": "engineer",
+                "failed_at": (run["state"].get("escalate") or {}).get("outputs", {}).get("failed_at"),
+            }
+        )
+        run["state"]["overridden"] = True
+        run["state"]["override_reason"] = reason
+        run["state"]["failed"] = False
+        ran = {e.get("tool") for e in run["events"] if e.get("type") == "tool"}
+        for fn in POST:
+            if FN_TOOL[fn] in ran:
+                continue
+            await _run_fn(run, fn)
+        run["status"] = "awaiting_approval"
+        interrupt = _interrupt_event(run)
+        run["events"].append(interrupt)
+        await _broadcast(run, interrupt)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
         return snapshot(run)
-    if decision == "approve" and (not run["state"].get("failed") or force):
+    if decision == "edit" and section3:
+        if run["state"].get("failed") and not run["state"].get("overridden"):
+            raise ValueError("Eskaluotos eigos negalima taisyti be override.")
+        await _run_fn(run, n_draft)
+        run["status"] = "awaiting_approval"
+        await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
+        return snapshot(run)
+    if decision == "approve":
+        if run["state"].get("failed") and not run["state"].get("overridden"):
+            raise ValueError("Sąlygos neišduodamos eskalacijos metu. Reikalingas inžinieriaus override su priežastimi.")
         await _run_fn(run, n_issue)
         run["status"] = "issued"
         done = {"type": "done", "status": "issued", "id": run_id, "snapshot": snapshot(run)}
@@ -304,35 +386,23 @@ async def rerun_from(run_id: str, from_tool: str, overrides: dict[str, Any] | No
     run["state"]["failed"] = False
     run["state"]["issued"] = None
     run["status"] = "running"
-    seq = PRE_CHECK + CHECKS + POST
-    # Map fn to tool name via running from index
+    run["state"]["overridden"] = False
     fns = PRE_CHECK + CHECKS
     if start < 8:
         for fn in fns[start:]:
             await _run_fn(run, fn)
-        if run["state"].get("failed"):
-            await _run_fn(run, n_escalate)
-        await _run_fn(run, n_draft)
-        await _run_fn(run, n_cost)
-        await _run_fn(run, n_map)
+            if run["state"].get("failed") and fn in CHECKS:
+                await _run_fn(run, n_escalate)
+                break
+        if not run["state"].get("failed"):
+            for fn in POST:
+                await _run_fn(run, fn)
     else:
         rest = POST[start - 8 :]
         for fn in rest:
             await _run_fn(run, fn)
     run["status"] = "escalated" if run["state"].get("failed") else "awaiting_approval"
-    interrupt = {
-        "type": "interrupt",
-        "tool": "engineer_approval",
-        "title": "Inžinieriaus patvirtinimas",
-        "title_lt": "Inžinieriaus patvirtinimas",
-        "kind": "human",
-        "failed": bool(run["state"].get("failed")),
-        "status": run["status"],
-        "ok": True,
-        "elapsed_ms": 0,
-        "ts": time.time(),
-        "source_tags": ["rule"],
-    }
+    interrupt = _interrupt_event(run)
     run["events"].append(interrupt)
     await _broadcast(run, interrupt)
     await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
@@ -356,58 +426,81 @@ async def subscribe(run_id: str):
             run["queues"].remove(q)
 
 
-def run_sync_until_interrupt(scenario_id: str = "hero", delay: float = 0) -> dict[str, Any]:
+def run_sync_until_interrupt(
+    scenario_id: str = "hero",
+    delay: float = 0,
+    text: str = "",
+    form: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Deterministic helper for tests (no asyncio loop required beyond running)."""
     os.environ["ESO_STEP_DELAY"] = str(delay)
-    run = create_run(scenario_id, "", None)
+    run = create_run(scenario_id, text, form)
     run["delay"] = delay
     state = run["state"]
-    for fn in PRE_CHECK + CHECKS:
-        t0 = time.perf_counter()
+    def _step(fn):
+        nonlocal state
+        name = FN_TOOL.get(fn, fn.__name__)
         state = {**state, **fn(state)}
         result = (state.get("events") or [None])[-1]
         if result:
-            _emit_tool(run, result, int((time.perf_counter() - t0) * 1000))
+            _emit_tool(run, result, replay_ms(name))
         run["state"] = state
-    if state.get("failed"):
-        t0 = time.perf_counter()
-        state = {**state, **n_escalate(state)}
-        _emit_tool(run, state["events"][-1], int((time.perf_counter() - t0) * 1000))
-    for fn in POST:
-        t0 = time.perf_counter()
-        state = {**state, **fn(state)}
-        _emit_tool(run, state["events"][-1], int((time.perf_counter() - t0) * 1000))
-        run["state"] = state
+
+    for fn in PRE_CHECK:
+        _step(fn)
+    for fn in CHECKS:
+        _step(fn)
+        if state.get("failed"):
+            _step(n_escalate)
+            break
+    if not state.get("failed"):
+        for fn in POST:
+            _step(fn)
     run["status"] = "escalated" if state.get("failed") else "awaiting_approval"
     run["state"] = state
-    run["events"].append(
-        {
-            "type": "interrupt",
-            "tool": "engineer_approval",
-            "title": "Inžinieriaus patvirtinimas",
-            "title_lt": "Inžinieriaus patvirtinimas",
-            "kind": "human",
-            "failed": bool(state.get("failed")),
-            "status": run["status"],
-            "ok": True,
-            "elapsed_ms": 0,
-            "ts": time.time(),
-            "source_tags": ["rule"],
-            "outputs": {"waiting": True},
-        }
-    )
+    run["events"].append(_interrupt_event(run))
     return snapshot(run)
 
 
 def approve_sync(run_id: str, section3: str | None = None) -> dict[str, Any]:
     run = RUNS[run_id]
+    if run["state"].get("failed") and not run["state"].get("overridden"):
+        raise ValueError("Sąlygos neišduodamos eskalacijos metu.")
     run["state"]["approval"] = {"decision": "approve", "section3": section3}
     if section3:
         run["state"] = {**run["state"], **n_draft(run["state"])}
-        _emit_tool(run, run["state"]["events"][-1], 0)
+        _emit_tool(run, run["state"]["events"][-1], replay_ms("draft_ts_section3"))
     run["state"] = {**run["state"], **n_issue(run["state"])}
-    _emit_tool(run, run["state"]["events"][-1], 0)
+    _emit_tool(run, run["state"]["events"][-1], replay_ms("issue_ts"))
     run["status"] = "issued"
+    return snapshot(run)
+
+
+def override_sync(run_id: str, reason: str) -> dict[str, Any]:
+    run = RUNS[run_id]
+    reason = (reason or "").strip()
+    if len(reason) < 8:
+        raise ValueError("Override reikalauja priežasties.")
+    run.setdefault("audit", []).append(
+        {"ts": time.time(), "action": "engineer_override", "reason": reason, "actor": "engineer"}
+    )
+    run["state"]["overridden"] = True
+    run["state"]["failed"] = False
+    ran = {e.get("tool") for e in run["events"] if e.get("type") == "tool"}
+
+    def _step(fn):
+        name = FN_TOOL.get(fn, fn.__name__)
+        run["state"] = {**run["state"], **fn(run["state"])}
+        result = (run["state"].get("events") or [None])[-1]
+        if result:
+            _emit_tool(run, result, replay_ms(name))
+
+    for fn in POST:
+        if FN_TOOL[fn] in ran:
+            continue
+        _step(fn)
+    run["status"] = "awaiting_approval"
+    run["events"].append(_interrupt_event(run))
     return snapshot(run)
 
 
@@ -426,3 +519,7 @@ def scenarios_public() -> list[dict[str, Any]]:
         }
         for s in all_scenarios()
     ]
+
+
+def samples_public() -> list[dict[str, Any]]:
+    return list(INTAKE_SAMPLES)

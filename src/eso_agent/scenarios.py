@@ -105,3 +105,34 @@ def get_scenario(sid: str) -> dict[str, Any]:
         if s["id"] == sid:
             return s
     raise KeyError(sid)
+
+
+INTAKE_SAMPLES = [
+    {
+        "id": "email_hero",
+        "title": "El. laiškas · 11 kW sodyba",
+        "text": (
+            "Sveiki,\n\n"
+            "Prašome prijungimo sąlygų naujam buitiniam vartotojui. Objektas — sodyba prie Dusinėnų. "
+            "Reikalinga 11 kW, trys fazės. Koordinatės 54,55929, 25,27955. "
+            "Transformatorinė 12-608.\n\n"
+            "Pagarbiai,\nVartotojas (redaguota)"
+        ),
+    },
+    {
+        "id": "portal_cabinet",
+        "title": "Portalas · esama spinta",
+        "text": (
+            "Pateikiu paraišką per savitarną. Naujas buitinis, 11 kW, 3 fazės. "
+            "Sklype jau stovi KS-39685. Koordinatės 54.55820, 25.27680."
+        ),
+    },
+    {
+        "id": "email_fail",
+        "title": "El. laiškas · 100 kW",
+        "text": (
+            "Laba diena, planuojame 100 kW trifazį prijungimą buitiniam objektui "
+            "koordinatėmis 54,55929, 25,27955, TP 12-608. Prašome sąlygų."
+        ),
+    },
+]

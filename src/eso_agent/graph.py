@@ -98,8 +98,8 @@ def n_map(state: AgentState) -> AgentState:
 
 
 def n_escalate(state: AgentState) -> AgentState:
-    checks = [state["capacity"], state["quality"], state["reliability"], state["future"]]
-    r = T.escalate_package(checks)
+    checks = [state.get("capacity"), state.get("quality"), state.get("reliability"), state.get("future")]
+    r = T.escalate_package([c for c in checks if c])
     return {**_trace(state, r), "escalate": r}
 
 
@@ -114,6 +114,10 @@ def n_issue(state: AgentState) -> AgentState:
         state.get("run_id") or "xxxxxx",
     )
     return {**_trace(state, r), "issued": r}
+
+
+def after_capacity(state: AgentState) -> str:
+    return "escalate" if state.get("failed") else "check_voltage_drop"
 
 
 def after_checks(state: AgentState) -> str:
@@ -148,7 +152,11 @@ def build_graph():
     g.add_edge("locate_connection_point", "select_solution")
     g.add_edge("select_solution", "size_breaker")
     g.add_edge("size_breaker", "check_capacity")
-    g.add_edge("check_capacity", "check_voltage_drop")
+    g.add_conditional_edges(
+        "check_capacity",
+        after_capacity,
+        {"escalate": "escalate", "check_voltage_drop": "check_voltage_drop"},
+    )
     g.add_edge("check_voltage_drop", "check_reliability")
     g.add_edge("check_reliability", "check_future")
     g.add_conditional_edges(
@@ -158,7 +166,7 @@ def build_graph():
     )
     g.add_edge("draft_ts_section3", "estimate_cost")
     g.add_edge("estimate_cost", "render_map")
-    g.add_edge("escalate", "estimate_cost")
+    g.add_edge("escalate", END)
     # Approval is a human interrupt implemented in the engine, then issue_ts.
     g.add_edge("render_map", END)
     g.add_edge("issue_ts", END)
@@ -182,9 +190,11 @@ def mermaid() -> str:
         return (
             "flowchart TD\n"
             "  parse_request --> locate_connection_point --> select_solution --> size_breaker\n"
-            "  size_breaker --> check_capacity --> check_voltage_drop --> check_reliability --> check_future\n"
+            "  size_breaker --> check_capacity\n"
+            "  check_capacity -->|pass| check_voltage_drop --> check_reliability --> check_future\n"
             "  check_future -->|pass| draft_ts_section3 --> estimate_cost --> render_map --> engineer_approval --> issue_ts\n"
-            "  check_future -->|fail| escalate --> estimate_cost\n"
+            "  check_capacity -->|fail| escalate\n"
+            "  check_future -->|fail| escalate\n"
         )
 
 
@@ -208,10 +218,5 @@ BEFORE_APPROVAL_FAIL = [
     n_solution,
     n_breaker,
     n_capacity,
-    n_quality,
-    n_reliability,
-    n_future,
     n_escalate,
-    n_cost,
-    n_map,
 ]

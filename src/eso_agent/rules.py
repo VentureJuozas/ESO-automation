@@ -73,6 +73,11 @@ OVERHEAD_FEEDERS = {"L-200", "L-204", "L-300"}
 CABLE_FEEDERS = {"L-KS14330", "L-KS39685", "L-KS13058"}
 
 
+def breaker_table(phases: int) -> list[dict]:
+    table = BREAKER_1F if phases == 1 else BREAKER_3F
+    return [{"kw_max": bound, "amps": amps, "phases": phases, "characteristic": "C"} for bound, amps in table]
+
+
 def size_breaker(kw: float, phases: int) -> dict:
     """Return breaker amperage from the calculator table. Tag: rule."""
     if kw <= 0:

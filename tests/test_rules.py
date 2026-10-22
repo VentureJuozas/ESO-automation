@@ -1,4 +1,4 @@
-from eso_agent.rules import diversity_coefficient, size_breaker
+from eso_agent.rules import breaker_table, diversity_coefficient, size_breaker
 
 
 def test_breaker_hero_11kw_3f():
@@ -13,6 +13,13 @@ def test_breaker_table_matches_history():
     assert size_breaker(22, 3)["amps"] == 40
     assert size_breaker(3, 1)["amps"] == 16
     assert size_breaker(18, 3)["amps"] == 32
+
+
+def test_breaker_table_highlights_11kw():
+    table = breaker_table(3)
+    assert table[0]["amps"] == 10
+    row = next(r for r in table if r["kw_max"] == 11)
+    assert row["amps"] == 20
 
 
 def test_diversity_known_points():

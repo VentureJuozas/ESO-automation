@@ -1,19 +1,40 @@
+import { fmtEur } from "../../steps.js";
+import SourceTags from "../SourceTags.jsx";
+
 export default function SolutionCards({ comparison = [], chosen }) {
   if (!comparison.length) return null;
+  const winner = comparison.find((c) => c.chosen) || chosen;
   return (
     <div className="section">
-      <h3>Kodėl A, B ar C</h3>
+      <h3>Kodėl laimėjo {winner?.id || "B"}</h3>
+      {winner && (
+        <p className="hint win">
+          <b>Sprendinys {winner.id}</b> — {winner.why || chosen?.reason}
+        </p>
+      )}
       <div className="cards">
-        {comparison.map((c) => (
-          <article key={c.id} className={`scard ${c.chosen ? "chosen" : ""} ${c.applicable ? "" : "off"}`}>
-            <h4>Sprendinys {c.id} {c.chosen ? "· parinkta" : c.applicable ? "" : "· netinka"}</h4>
-            <p>{c.title}</p>
-            <p style={{ marginTop: 8 }}>{c.chosen || c.applicable ? c.why : c.why_not}</p>
-            <p style={{ marginTop: 8 }}>{c.ts_hint}</p>
-          </article>
-        ))}
+        {comparison.map((c) => {
+          const rejected = !c.chosen;
+          return (
+            <article key={c.id} className={`scard ${c.chosen ? "chosen" : "off"}`}>
+              <h4>
+                {c.id}
+                <small>{c.chosen ? "parinkta" : c.applicable ? "atmesta" : "netinka"}</small>
+              </h4>
+              <p className="scard-title">{c.title}</p>
+              <p>{c.chosen ? c.why : c.why_not}</p>
+              <dl>
+                <div><dt>Kaina be PVM</dt><dd>{fmtEur(c.cost_net)}</dd></div>
+                <div><dt>Su PVM</dt><dd>{fmtEur(c.cost_gross)}</dd></div>
+                <div><dt>Darbai</dt><dd>{c.works}</dd></div>
+                <div><dt>Apribojimai</dt><dd>{c.constraints}</dd></div>
+              </dl>
+              {rejected && <p className="why-not">{c.why_not}</p>}
+            </article>
+          );
+        })}
       </div>
-      {chosen?.reason && <p className="hint" style={{ marginTop: 12 }}>{chosen.reason}</p>}
+      <p className="map-note">SCOPE A/B/C. <SourceTags tags={["rule", "real"]} /></p>
     </div>
   );
 }

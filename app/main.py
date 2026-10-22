@@ -20,6 +20,7 @@ from eso_agent.engine import (  # noqa: E402
     list_runs,
     rerun_from,
     resume,
+    samples_public,
     scenarios_public,
     snapshot,
     start_run,
@@ -48,6 +49,7 @@ class ResumeBody(BaseModel):
     decision: str = "approve"
     section3: str | None = None
     force: bool = False
+    override_reason: str | None = None
 
 
 class RerunBody(BaseModel):
@@ -63,6 +65,11 @@ def health():
 @app.get("/api/scenarios")
 def scenarios():
     return scenarios_public()
+
+
+@app.get("/api/samples")
+def samples():
+    return samples_public()
 
 
 @app.get("/api/architecture")
@@ -112,7 +119,10 @@ async def events(rid: str):
 async def resume_run(rid: str, body: ResumeBody):
     if rid not in RUNS:
         raise HTTPException(404)
-    return await resume(rid, body.decision, body.section3, body.force)
+    try:
+        return await resume(rid, body.decision, body.section3, body.force, body.override_reason)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @app.post("/api/runs/{rid}/rerun")

@@ -32,7 +32,7 @@ export default function HowItWorks({ architecture, layerId }) {
   if (layerId === "human") {
     return (
       <div>
-        <p className="hint">Sąlygas visada išduoda inžinierius: patvirtinti, taisyti §3 arba perskaičiuoti mazgą.</p>
+        <p className="hint">Sąlygas visada išduoda inžinierius. Eskalacija reikalauja override su priežastimi — vieno mygtuko „išduoti vis tiek“ nėra.</p>
       </div>
     );
   }

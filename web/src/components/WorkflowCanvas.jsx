@@ -17,7 +17,8 @@ import {
 } from "../workflow.js";
 import { Bang, Check, Icon } from "../icons.jsx";
 
-function nodeState(id, events, runningTool, failed) {
+function nodeState(id, events, runningTool, failed, skipped = []) {
+  if (skipped.includes(id)) return "skip";
   if (runningTool === id) return "run";
   const ev = [...events].reverse().find((e) => e.tool === id);
   if (!ev) return "wait";
@@ -30,12 +31,14 @@ function nodeState(id, events, runningTool, failed) {
   return "done";
 }
 
-function edgeActive(from, to, events, runningTool, failed) {
-  const fs = nodeState(from, events, runningTool, failed);
-  const ts = nodeState(to, events, runningTool, failed);
-  if (from === "check_future" && to === "escalate") return failed && (fs === "done" || fs === "stop");
+function edgeActive(from, to, events, runningTool, failed, skipped = []) {
+  const fs = nodeState(from, events, runningTool, failed, skipped);
+  const ts = nodeState(to, events, runningTool, failed, skipped);
+  if (from === "check_capacity" && to === "escalate") return failed && (fs === "done" || fs === "stop");
+  if (from === "check_capacity" && to === "check_voltage_drop") return !skipped.includes("check_voltage_drop") && fs === "done";
+  if (from === "check_future" && to === "escalate") return failed && (fs === "done" || fs === "stop") && !skipped.includes("check_future");
   if (from === "check_future" && to === "draft_ts_section3") return !failed && fs === "done";
-  if (from === "escalate" && to === "estimate_cost") return failed;
+  if (ts === "skip" || fs === "skip") return false;
   if (ts === "run") return true;
   return fs === "done" && (ts === "done" || ts === "stop" || ts === "run");
 }
@@ -55,6 +58,7 @@ export default function WorkflowCanvas({
   stickies,
   inspectorOpen = true,
   followId,
+  skipped = [],
 }) {
   const nodes = mode === "arch" ? ARCH_NODES : PIPELINE_NODES;
   const edges = mode === "arch" ? ARCH_EDGES : PIPELINE_EDGES;
@@ -226,7 +230,7 @@ export default function WorkflowCanvas({
             const na = lookup(a);
             const nb = lookup(b);
             if (!na || !nb) return null;
-            const on = mode === "arch" ? true : edgeActive(a, b, events, runningTool, failed);
+            const on = mode === "arch" ? true : edgeActive(a, b, events, runningTool, failed, skipped);
             const running = runningTool === b;
             return (
               <path
@@ -245,11 +249,13 @@ export default function WorkflowCanvas({
           </aside>
         ))}
         {nodes.map((n) => {
-          const st = mode === "arch" ? (selectedId === n.id ? "run" : "wait") : nodeState(n.id, events, runningTool, failed);
-          const hidden = mode === "pipeline" && n.id === "escalate" && !failed && st === "wait";
+          const st = mode === "arch" ? (selectedId === n.id ? "run" : "wait") : nodeState(n.id, events, runningTool, failed, skipped);
+          const hidden = mode === "pipeline" && n.id === "escalate" && !failed && (st === "wait" || st === "idle");
           const arch = architecture?.layers?.find((l) => l.id === n.id);
           const ev = lastEvent(n.id, events);
-          const summary = mode === "arch" ? (arch?.note || n.caption) : (nodeSummary(n.id, ev) || n.caption);
+          const summary = st === "skip"
+            ? "Praleista"
+            : mode === "arch" ? (arch?.note || n.caption) : (nodeSummary(n.id, ev) || n.caption);
           const ports = portMap[n.id] || new Set(["left", "right"]);
           return (
             <button
@@ -263,7 +269,7 @@ export default function WorkflowCanvas({
               aria-label={n.label}
             >
               {[...ports].map((side) => (
-                <span key={side} className={`n8n-port ${side}${st === "run" ? " live" : ""}`} />
+                <span key={side} className={`n8n-port port-${side}${st === "run" ? " live" : ""}`} />
               ))}
               <span className="n8n-ico"><Icon name={n.icon} size={20} /></span>
               <span className="n8n-copy">
@@ -276,6 +282,7 @@ export default function WorkflowCanvas({
                 </span>
               )}
               {st === "stop" && <span className="n8n-pip stop"><Bang /></span>}
+              {st === "skip" && <span className="n8n-pip skip" title="Praleista">–</span>}
               {st === "run" && <span className="n8n-pip run" />}
               {st === "done" && ev?.elapsed_ms != null && (
                 <span className="n8n-ms">{ev.elapsed_ms} ms</span>

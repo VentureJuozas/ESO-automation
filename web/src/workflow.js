@@ -32,12 +32,12 @@ export const PIPELINE_EDGES = [
   ["select_solution", "size_breaker"],
   ["size_breaker", "check_capacity"],
   ["check_capacity", "check_voltage_drop"],
+  ["check_capacity", "escalate"],
   ["check_voltage_drop", "check_reliability"],
   ["check_reliability", "check_future"],
   ["check_future", "draft_ts_section3"],
   ["check_future", "escalate"],
   ["draft_ts_section3", "estimate_cost"],
-  ["escalate", "estimate_cost"],
   ["estimate_cost", "render_map"],
   ["render_map", "engineer_approval"],
   ["engineer_approval", "issue_ts"],
@@ -117,7 +117,7 @@ export function edgePath(a, b) {
 
 export function nodePorts(id, nodes, edges) {
   const n = nodeById(id, nodes);
-  const used = new Set(["left", "right"]);
+  const used = new Set();
   if (!n) return used;
   for (const [a, b] of edges) {
     if (a === id) {
@@ -165,7 +165,7 @@ export function nodeSummary(id, ev) {
     case "issue_ts":
       return o.ts_number || "";
     case "escalate":
-      return o.reason ? "Perduota inžinieriui" : "";
+      return o.numbers?.after_kw != null ? `${o.numbers.after_kw} / ${o.numbers.limit_80_kw} kW` : (o.reason ? "Perduota" : "");
     default:
       return ev.title_lt || ev.caption || "";
   }

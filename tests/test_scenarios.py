@@ -25,3 +25,6 @@ def test_fail_capacity_escalates():
     assert snap["status"] == "escalated"
     assert snap["escalate"]["status"] == "needs_engineer"
     assert snap["capacity"]["transformer_bar"]["after_kw"] > 320
+    tools = [e["tool"] for e in snap["events"] if e.get("type") == "tool"]
+    assert "draft_ts_section3" not in tools
+    assert "escalate" in tools

@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 import SourceTags from "./SourceTags.jsx";
 import TransformerBar from "./viz/TransformerBar.jsx";
 import VoltageProfile from "./viz/VoltageProfile.jsx";
-import AffectedList from "./viz/AffectedList.jsx";
-import HeadroomGauge from "./viz/HeadroomGauge.jsx";
+import { ReliabilityCard, FutureCard } from "./viz/CheckCards.jsx";
 import SolutionCards from "./viz/SolutionCards.jsx";
 import TsDocument from "./viz/TsDocument.jsx";
 import CostTable from "./viz/CostTable.jsx";
 import MapPanel from "./MapPanel.jsx";
+import BreakerTable from "./viz/BreakerTable.jsx";
+import ParseExtract from "./viz/ParseExtract.jsx";
+import EscalatePanel from "./viz/EscalatePanel.jsx";
 
-function statusBadge(ev, running) {
+function statusBadge(ev, running, skipped) {
+  if (skipped) return <span className="badge">Praleista</span>;
   if (running) return <span className="badge">Vykdoma</span>;
   if (!ev) return <span className="badge">Laukia</span>;
+  if (ev.type === "interrupt" && ev.tool === "escalate") return <span className="badge bad">Eskalacija</span>;
   if (ev.type === "interrupt") return <span className="badge human">Laukia inžinieriaus</span>;
   if (ev.outputs?.escalate) return <span className="badge bad">Nepraeina</span>;
   if (ev.outputs?.pass === false) return <span className="badge bad">Nepraeina</span>;
@@ -19,27 +23,35 @@ function statusBadge(ev, running) {
   return <span className="badge ok">Atlikta</span>;
 }
 
-function Viz({ ev, section3, setSection3, canEdit }) {
+function Viz({ ev, section3, setSection3, canEdit, runId, document, audit }) {
   const o = ev?.outputs || {};
+  const doc = o.document || document;
   switch (ev?.tool) {
+    case "parse_request":
+      return <ParseExtract outputs={o} />;
+    case "locate_connection_point":
+    case "render_map":
+      return <MapPanel map={o.map || o} />;
+    case "select_solution":
+      return <SolutionCards comparison={o.comparison} chosen={o} />;
+    case "size_breaker":
+      return <BreakerTable table={o.table} selected={o} requestedKw={o.requested_kw} />;
     case "check_capacity":
       return <TransformerBar bar={o.transformer_bar} pass={o.pass} />;
     case "check_voltage_drop":
       return <VoltageProfile profile={o.profile} limit={o.limit_v} />;
     case "check_reliability":
-      return <AffectedList cutIn={o.cut_in} n1={o.n1} backup={o.backup} />;
+      return <ReliabilityCard cutIn={o.cut_in} n1={o.n1} backup={o.backup} />;
     case "check_future":
-      return <HeadroomGauge gauge={o.gauge} />;
-    case "select_solution":
-      return <SolutionCards comparison={o.comparison} chosen={o} />;
+      return <FutureCard gauge={o.gauge} outputs={o} />;
+    case "estimate_cost":
+      return <CostTable cost={o} />;
     case "draft_ts_section3":
     case "engineer_approval":
     case "issue_ts":
-      return <TsDocument document={o.document || o.application && { ...o, section3: o.section3 }} section3={section3} onChange={setSection3} editable={canEdit} />;
-    case "estimate_cost":
-      return <CostTable cost={o} />;
-    case "render_map":
-      return <MapPanel map={o} />;
+      return <TsDocument document={doc} section3={section3} onChange={setSection3} editable={canEdit} runId={runId} />;
+    case "escalate":
+      return <EscalatePanel pkg={o} audit={audit} />;
     default:
       return null;
   }
@@ -61,7 +73,7 @@ function RequestParams({ form, setForm }) {
       <div><label>Ilguma</label><input value={form.lon} onChange={(e) => setForm({ ...form, lon: Number(e.target.value) })} /></div>
       <div className="full">
         <label>Laisvas tekstas (LLM / replay skaitymui)</label>
-        <input value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} />
+        <textarea className="edit" style={{ minHeight: 88 }} value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} />
       </div>
     </div>
   );
@@ -69,7 +81,7 @@ function RequestParams({ form, setForm }) {
 
 export default function StepSheet({
   toolId, event, running, error, catalog, onRerun, section3, setSection3, canEdit, emptyHint,
-  form, setForm, onClose,
+  form, setForm, onClose, runId, document, audit = [], skipped = false,
 }) {
   const [tab, setTab] = useState("output");
   const meta = (catalog?.tools || []).find((t) => t.id === toolId) || {};
@@ -120,7 +132,7 @@ export default function StepSheet({
           <h2>{title}</h2>
         </div>
         <div className="badges">
-          {statusBadge(event, running)}
+          {statusBadge(event, running, skipped)}
           {event?.llm && <span className="badge llm">LLM</span>}
           {(event?.kind === "human" || meta.kind === "human") && <span className="badge human">Žmogus</span>}
           {(event?.kind === "tool" || meta.kind === "tool") && <span className="badge">Python</span>}
@@ -134,14 +146,12 @@ export default function StepSheet({
         <button type="button" className={tab === "json" ? "on" : ""} onClick={() => setTab("json")}>JSON</button>
       </div>
       <div className="sheet-body">
+        {skipped && <p className="hint bad-hint">Šis mazgas praleistas — eiga šakojo į eskalaciją.</p>}
         {(event?.engineer || meta.engineer) && <p className="hint">{event?.engineer || meta.engineer}</p>}
         {tab === "output" && (
           <>
-            <Viz ev={event} section3={section3} setSection3={setSection3} canEdit={canEdit} />
-            {event?.outputs?.reason && event.outputs.escalate && (
-              <p className="hint" style={{ borderColor: "var(--bad)" }}>{event.outputs.reason}</p>
-            )}
-            {!event && showForm && <p className="empty" style={{ padding: 12 }}>Paleiskite eigą — šio mazgo išvestis atsiras čia.</p>}
+            <Viz ev={event} section3={section3} setSection3={setSection3} canEdit={canEdit} runId={runId} document={document} audit={audit} />
+            {!event && showForm && <p className="empty" style={{ padding: 12 }}>Paleiskite eigą — išskaityti laukai ir žemėlapis atsiras čia.</p>}
           </>
         )}
         {tab === "params" && (
@@ -163,7 +173,9 @@ export default function StepSheet({
             )}
           </div>
         )}
-        {tab === "json" && <pre className="json">{JSON.stringify(event?.outputs ?? meta, null, 2)}</pre>}
+        {tab === "json" && (
+          <pre className="json">{JSON.stringify({ inputs, outputs: event?.outputs ?? null }, null, 2)}</pre>
+        )}
         <div className="section">
           <h3>Šaltiniai ir taisyklė</h3>
           <SourceTags tags={event?.source_tags} />
@@ -175,7 +187,7 @@ export default function StepSheet({
           )}
           {(event?.notes || []).filter(Boolean).map((n) => <p key={n} style={{ color: "var(--muted)", fontSize: 12 }}>{n}</p>)}
         </div>
-        {onRerun && event?.tool && event.tool !== "engineer_approval" && (
+        {onRerun && event?.tool && event.tool !== "engineer_approval" && event.tool !== "escalate" && (
           <button className="go" type="button" onClick={() => onRerun(event.tool)}>Perskaičiuoti nuo čia</button>
         )}
       </div>

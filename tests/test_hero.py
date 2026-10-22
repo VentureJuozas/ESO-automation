@@ -56,6 +56,11 @@ def test_hero_run_to_approval():
     assert issued["issued"]["issue_date"]
     assert issued["issued"]["valid_until"]
     assert issued["issued"]["ts_number"].startswith("26-E-DEMO-")
+    assert issued["issued"]["document"]["kw"] == 11
+    assert issued["issued"]["document"]["phases"] == 3
+    assert issued["issued"]["document"]["object_name"]
+    assert issued["issued"]["document"]["customer"]
+    assert issued["issued"]["document"]["address"]
 
 
 def test_hero_breaker_from_table():

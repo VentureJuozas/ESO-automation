@@ -17,7 +17,8 @@ _KW = re.compile(r"(\d+(?:[.,]\d+)?)\s*k\s*w", re.I)
 _PHASE3 = re.compile(r"(3\s*f|trifaz|trys faz|3\s*faz)", re.I)
 _PHASE1 = re.compile(r"(1\s*f|vienfaz|viena faz)", re.I)
 _DOT_COORDS = re.compile(r"(-?\d{1,3}\.\d+)\s*[,;]\s*(-?\d{1,3}\.\d+)")
-_LT_COORDS = re.compile(r"(\d{2}),(\d{3,6})\s*[,;]\s*(\d{2}),(\d{3,6})")
+_LT_COORDS = re.compile(r"(\d{1,3}),(\d{3,6})\s*[,;]\s*(\d{1,3}),(\d{3,6})")
+_OBJECT = re.compile(r"(sodyba|namas|sklypas|objektas|garažas|ūkis)[^\n,.]{0,40}", re.I)
 
 
 def llm_mode() -> str:
@@ -40,37 +41,88 @@ def _f(v: Any) -> float | None:
     return float(str(v).replace(",", ".").strip())
 
 
+def _hit(value: Any, source: str, confidence: float, match: re.Match | None = None, field: str = "") -> dict[str, Any]:
+    span = [match.start(), match.end()] if match else None
+    return {
+        "field": field,
+        "value": value,
+        "source": source,
+        "confidence": round(confidence, 2),
+        "start": span[0] if span else None,
+        "end": span[1] if span else None,
+        "snippet": match.group(0) if match else "",
+    }
+
+
 def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
     form = form or RequestForm()
     warnings: list[str] = []
     tags: list[str] = []
+    source_text = (form.text or text or "").strip()
+    hits: dict[str, dict[str, Any]] = {}
+    highlights: list[dict[str, Any]] = []
+
+    def remember(hit: dict[str, Any]) -> None:
+        hits[hit["field"]] = hit
+        if hit.get("start") is not None:
+            highlights.append({"field": hit["field"], "start": hit["start"], "end": hit["end"], "snippet": hit.get("snippet")})
 
     kw = _f(form.kw)
     phases = form.phases
     lat = _f(form.lat)
     lon = _f(form.lon)
     pending = _f(form.pending_kw)
-    text = (form.text or text or "").strip()
+    object_name = form.object_name or "Naujas buitinis objektas"
 
-    if kw is None and text:
-        m = _KW.search(text)
-        if m:
-            kw = float(m.group(1).replace(",", "."))
-    if phases is None and text:
-        if _PHASE1.search(text) and not _PHASE3.search(text):
-            phases = 1
-        elif _PHASE3.search(text):
-            phases = 3
-    if (lat is None or lon is None) and text:
-        m = _DOT_COORDS.search(text.replace(",", ".")) if "." in text else None
-        lt = _LT_COORDS.search(text)
+    if source_text:
+        mk = _KW.search(source_text)
+        if mk:
+            remember(_hit(float(mk.group(1).replace(",", ".")), "text", 0.93, mk, "kw"))
+            if kw is None:
+                kw = float(mk.group(1).replace(",", "."))
+        elif kw is not None:
+            remember(_hit(kw, "form", 0.99, None, "kw"))
+        m3 = _PHASE3.search(source_text)
+        m1 = _PHASE1.search(source_text)
+        if m1 and not m3:
+            remember(_hit(1, "text", 0.9, m1, "phases"))
+            if phases is None:
+                phases = 1
+        elif m3:
+            remember(_hit(3, "text", 0.92, m3, "phases"))
+            if phases is None:
+                phases = 3
+        elif phases in (1, 3):
+            remember(_hit(int(phases), "form", 0.99, None, "phases"))
+        lt = _LT_COORDS.search(source_text)
+        dm = _DOT_COORDS.search(source_text)
         if lt:
-            lat = float(lt.group(1) + "." + lt.group(2))
-            lon = float(lt.group(3) + "." + lt.group(4))
-        elif _DOT_COORDS.search(text):
-            dm = _DOT_COORDS.search(text)
-            lat = float(dm.group(1))
-            lon = float(dm.group(2))
+            plat = float(lt.group(1) + "." + lt.group(2))
+            plon = float(lt.group(3) + "." + lt.group(4))
+            remember(_hit([plat, plon], "text", 0.94, lt, "coords"))
+            if lat is None:
+                lat = plat
+            if lon is None:
+                lon = plon
+        elif dm:
+            remember(_hit([float(dm.group(1)), float(dm.group(2))], "text", 0.94, dm, "coords"))
+            if lat is None:
+                lat = float(dm.group(1))
+            if lon is None:
+                lon = float(dm.group(2))
+        elif lat is not None and lon is not None:
+            remember(_hit([lat, lon], "form", 0.99, None, "coords"))
+        mo = _OBJECT.search(source_text)
+        if mo and (not form.object_name or form.object_name == "Naujas buitinis objektas"):
+            object_name = mo.group(0).strip().capitalize()
+            remember(_hit(object_name, "text", 0.7, mo, "object_name"))
+
+    if kw is not None and "kw" not in hits:
+        remember(_hit(kw, "form", 0.99, None, "kw"))
+    if phases in (1, 3) and "phases" not in hits:
+        remember(_hit(int(phases), "form", 0.99, None, "phases"))
+    if lat is not None and lon is not None and "coords" not in hits:
+        remember(_hit([lat, lon], "form", 0.99, None, "coords"))
 
     parse_mode: str = "form" if form.kw and form.lat and form.lon else "offline"
 
@@ -78,14 +130,17 @@ def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
         kw = 11.0
         warnings.append("Galia nerasta — naudojamas hero numatytasis 11 kW.")
         tags.append("synthetic")
+        remember(_hit(kw, "default", 0.35, None, "kw"))
     if phases not in (1, 3):
         phases = 3
         warnings.append("Fazės nerastos — naudojamos 3 fazės.")
         tags.append("synthetic")
+        remember(_hit(3, "default", 0.4, None, "phases"))
     if lat is None or lon is None:
         lat, lon = HERO_LAT, HERO_LON
         warnings.append("Koordinatės nerastos — naudojamas hero taškas prie 12-608.")
         tags.append("synthetic")
+        remember(_hit([lat, lon], "default", 0.35, None, "coords"))
     if pending is None:
         pending = 0.0
         tags.append("synthetic")
@@ -101,10 +156,13 @@ def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
         lon=float(lon),
         customer_type=customer,
         pending_kw=float(pending or 0),
-        object_name=form.object_name or "Naujas buitinis objektas",
+        object_name=object_name,
         parse_mode=parse_mode,  # type: ignore[arg-type]
         warnings=warnings,
         source_tags=tags,  # type: ignore[arg-type]
+        source_text=source_text,
+        extraction=hits,
+        highlights=highlights,
     )
 
 

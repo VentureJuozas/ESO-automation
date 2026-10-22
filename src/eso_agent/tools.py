@@ -5,17 +5,19 @@ from typing import Any
 
 from line_load import evaluate as evaluate_line
 
+from eso_agent.catalog import tool_by_id
 from eso_agent.cost import estimate_cost as build_cost
+from eso_agent.document import REDACTED_ADDRESS, REDACTED_CUSTOMER, build_ts_document
 from eso_agent.llm import llm_mode, parse_request as llm_parse, phrase_ts_offline, phrase_ts_with_llm
 from eso_agent.models import RequestForm
 from eso_agent.network import STATION, haversine_m, load_network, nearest_element
-from eso_agent.catalog import tool_by_id
 from eso_agent.rules import (
     CABINET_AT_PLOT_M,
     NEW_CABLE_MAX_M,
     NEW_RADIAL_CABLE_MAX_KW,
     VOLTAGE_MIN_V,
     VOLTAGE_NOMINAL_V,
+    breaker_table,
     cable_mm2_for_solution,
     diversity_coefficient,
     issuing_deadline_days,
@@ -23,6 +25,34 @@ from eso_agent.rules import (
     size_breaker as size_breaker_rule,
 )
 from eso_agent.ts_text import issue_dates, ownership_boundary, section3_blocks
+
+
+def _feeder_path(feeder_name: str) -> list[list[float]]:
+    net = load_network()
+    els = [e for e in net["elements"] if e["feeder"] == feeder_name]
+    els.sort(key=lambda e: haversine_m(STATION["lat"], STATION["lon"], e["lat"], e["lon"]))
+    path = [[STATION["lat"], STATION["lon"]]]
+    path.extend([e["lat"], e["lon"]] for e in els)
+    return path
+
+
+def _map_payload(parsed: dict[str, Any], location_out: dict[str, Any], solution_id: str | None = None) -> dict[str, Any]:
+    net = load_network()
+    feeder = location_out.get("feeder")
+    return {
+        "request": {"lat": parsed["lat"], "lon": parsed["lon"]},
+        "selected": location_out.get("element"),
+        "distance_m": location_out.get("distance_m"),
+        "solution": solution_id,
+        "substation": net["substation"],
+        "elements": net["elements"],
+        "feeders": [{"name": f["name"], "type": f["type"], "color": f["color"], "points": f["points"]} for f in net["feeders"]],
+        "line": {
+            "name": feeder,
+            "path": _feeder_path(feeder) if feeder else [],
+            "source": "synthetic",
+        },
+    }
 
 
 def _annotate(result: dict[str, Any]) -> dict[str, Any]:
@@ -45,6 +75,11 @@ def parse_request(text: str = "", form: dict[str, Any] | None = None) -> dict[st
         "outputs": {
             "parsed": parsed.model_dump(),
             "deadline": deadline,
+            "source_text": parsed.source_text,
+            "extraction": parsed.extraction,
+            "highlights": parsed.highlights,
+            "customer_placeholder": REDACTED_CUSTOMER,
+            "address_placeholder": REDACTED_ADDRESS,
             "properly_submitted": {
                 "value": True,
                 "source": "synthetic",
@@ -86,6 +121,11 @@ def locate_connection_point(parsed: dict[str, Any]) -> dict[str, Any]:
             "feeder_record": feeder,
             "substation": STATION,
             "nearest": ranked[:6],
+            "map": _map_payload(parsed, {
+                "feeder": feeder["name"],
+                "element": el,
+                "distance_m": round(found["distance_m"], 1),
+            }),
         },
         "source_tags": ["synthetic", "inferred", "real"],
         "notes": [
@@ -142,6 +182,24 @@ def select_solution_tool(location: dict[str, Any]) -> dict[str, Any]:
             "ts_hint": "Įsipjauti į kabelinę liniją, KS/KAS, saugiklių blokas, perskaičiuoti apsaugas.",
         },
     ]
+    stub = out["distance_m"]
+    for card in comparison:
+        sid = card["id"]
+        cable = stub if sid == "B" else (max(stub, 20.0) if sid == "C" else 0.0)
+        cost = build_cost(sid, cable if sid != "A" else None)
+        card["cost_net"] = cost["net"]
+        card["cost_gross"] = cost["gross"]
+        card["works"] = {
+            "A": "Jungiklio keitimas esamoje KS/KAS, be naujos spintos.",
+            "B": "KAS ant atramos + 16 mm² nuo oro linijos laidų.",
+            "C": "KS/KAS sklypo riboje, įsipjovimas, ≥150 mm².",
+        }[sid]
+        card["constraints"] = {
+            "A": f"Spinta turi stovėti sklype (≤{CABINET_AT_PLOT_M:.0f} m).",
+            "B": "Tinka tik oro linijai; 16 mm² kainos byloje nėra.",
+            "C": "Radialė ≤80 kW, naujas kabelis ≤600 m, 3 fazės.",
+        }[sid]
+        card["cost_source"] = "real"
     return _annotate({
         "tool": "select_solution",
         "title": "Sprendinio parinkimas",
@@ -162,12 +220,13 @@ def select_solution_tool(location: dict[str, Any]) -> dict[str, Any]:
 
 def size_breaker(parsed: dict[str, Any]) -> dict[str, Any]:
     br = size_breaker_rule(parsed["kw"], parsed["phases"])
+    table = breaker_table(parsed["phases"])
     return _annotate({
         "tool": "size_breaker",
         "title": "Jungiklio parinkimas",
         "llm": False,
         "inputs": {"kw": parsed["kw"], "phases": parsed["phases"]},
-        "outputs": br,
+        "outputs": {**br, "table": table, "requested_kw": parsed["kw"]},
         "source_tags": ["rule"],
         "notes": [br["note"]],
         "ok": True,
@@ -595,30 +654,12 @@ def draft_ts_section3(
         text = phrase_ts_offline(blocks)
         mode = "offline"
     issued, valid = issue_dates()
-    document = {
-        "ts_number": "PROJEKTAS",
-        "issue_date": None,
-        "valid_until": valid,
-        "watermark": "PROJEKTAS. SUTARTIS NEPATVIRTINTA",
-        "object_name": parsed.get("object_name") or "Naujas buitinis objektas",
-        "customer": "{{redaguota}}",
-        "address": "{{redaguota}}",
-        "kw": parsed["kw"],
-        "phases": parsed["phases"],
-        "section1": ownership_boundary(solution["outputs"]["id"]),
-        "section2_flags": {
-            "generation": parsed.get("includes_generation", False),
-            "first_time": parsed.get("first_time_connection", True),
-        },
-        "section3": text,
-        "blocks": blocks,
-        "tp": "12-608",
-        "feeder": location["outputs"]["feeder"],
-        "element": location["outputs"]["element_id"],
-        "breaker": breaker["outputs"]["label"],
-        "solution": solution["outputs"]["id"],
-        "placeholder_dates": {"valid_until_example": valid, "issue_date_example": issued},
-    }
+    document = build_ts_document(
+        parsed, location, solution, breaker, text, issued=False, valid_until=valid
+    )
+    document["placeholder_dates"] = {"valid_until_example": valid, "issue_date_example": issued}
+    document["parse_mode"] = mode
+    document["blocks"] = blocks
     return _annotate({
         "tool": "draft_ts_section3",
         "title": "Sąlygų §3 juodraštis",
@@ -628,7 +669,7 @@ def draft_ts_section3(
             "section3": text,
             "blocks": blocks,
             "ownership_boundary": ownership_boundary(solution["outputs"]["id"]),
-            "watermark": "PROJEKTAS. SUTARTIS NEPATVIRTINTA",
+            "watermark": document["watermark"],
             "parse_mode": mode,
             "document": document,
         },
@@ -660,21 +701,12 @@ def estimate_cost_tool(solution: dict[str, Any], location: dict[str, Any]) -> di
 
 
 def render_map(parsed: dict[str, Any], location: dict[str, Any], solution: dict[str, Any]) -> dict[str, Any]:
-    net = load_network()
-    el = location["outputs"]["element"]
     return _annotate({
         "tool": "render_map",
         "title": "Prijungimo žemėlapis",
         "llm": False,
         "inputs": {"lat": parsed["lat"], "lon": parsed["lon"]},
-        "outputs": {
-            "request": {"lat": parsed["lat"], "lon": parsed["lon"]},
-            "selected": el,
-            "solution": solution["outputs"]["id"],
-            "substation": net["substation"],
-            "elements": net["elements"],
-            "feeders": [{"name": f["name"], "type": f["type"], "color": f["color"], "points": f["points"]} for f in net["feeders"]],
-        },
+        "outputs": _map_payload(parsed, location["outputs"], solution["outputs"]["id"]),
         "source_tags": ["synthetic", "real"],
         "notes": ["Žemėlapis: TP, atramos ir spintos. Be klientų adresų ir skaitiklių."],
         "ok": True,
@@ -682,19 +714,44 @@ def render_map(parsed: dict[str, Any], location: dict[str, Any], solution: dict[
 
 
 def escalate_package(checks: list[dict[str, Any]]) -> dict[str, Any]:
-    reasons = [c["outputs"].get("reason") for c in checks if c["outputs"].get("escalate")]
-    reasons = [r for r in reasons if r]
+    failed = [c for c in checks if c and (c.get("outputs") or {}).get("escalate")]
+    reasons = [c["outputs"].get("reason") for c in failed if c["outputs"].get("reason")]
+    cap = next((c for c in failed if c.get("tool") == "check_capacity"), failed[0] if failed else {})
+    out = (cap or {}).get("outputs") or {}
+    bar = out.get("transformer_bar") or {}
+    after = bar.get("after_kw")
+    limit = bar.get("limit_80_kw") or 320
     return _annotate({
         "tool": "escalate",
         "title": "Perdavimas inžinieriui",
         "llm": False,
-        "inputs": {"failed_tools": [c["tool"] for c in checks if c["outputs"].get("escalate")]},
+        "inputs": {"failed_tools": [c["tool"] for c in failed]},
         "outputs": {
             "status": "needs_engineer",
+            "failed_at": (cap or {}).get("tool") or "check_capacity",
             "reasons": reasons,
+            "reason": reasons[0] if reasons else None,
+            "numbers": {
+                "peak_kw": bar.get("before_kw"),
+                "requested_kw": bar.get("added_kw"),
+                "after_kw": after,
+                "limit_80_kw": limit,
+                "limit_90_kw": bar.get("limit_90_kw"),
+                "over_kw": round((after or 0) - limit, 1) if after is not None else None,
+            },
+            "suggested_next": (
+                "5 pakopa — transformatoriaus keitimas / stiprinimas (už šio demo SCOPE). "
+                "Sąlygos neišduodamos be inžinieriaus override su priežastimi."
+            ),
             "next_level": "4–6 pakopa (linijos stiprinimas / transformatorius / nauja TP) — už SCOPE ribų",
+            "attachments": {
+                "steps": out.get("steps"),
+                "transformer_bar": bar,
+                "source_tags": (cap or {}).get("source_tags") or ["real", "rule"],
+            },
+            "safety": "Vieno mygtuko „išduoti vis tiek“ nėra. Override reikalauja priežasties ir rašomas į auditą.",
         },
-        "source_tags": ["rule"],
+        "source_tags": ["rule", "real"],
         "notes": reasons,
         "ok": True,
     })
@@ -711,6 +768,11 @@ def issue_ts(
 ) -> dict[str, Any]:
     issued, valid = issue_dates()
     number = f"26-E-DEMO-{run_id[:6].upper()}"
+    section3 = approval.get("section3") or draft["outputs"]["section3"]
+    document = build_ts_document(
+        parsed, location, solution, breaker, section3,
+        issued=True, ts_number=number, issue_date=issued, valid_until=valid, run_id=run_id,
+    )
     return _annotate({
         "tool": "issue_ts",
         "title": "Sąlygų išdavimas",
@@ -721,8 +783,9 @@ def issue_ts(
             "issue_date": issued,
             "valid_until": valid,
             "watermark": None,
-            "section3": approval.get("section3") or draft["outputs"]["section3"],
+            "section3": section3,
             "ownership_boundary": draft["outputs"]["ownership_boundary"],
+            "document": document,
             "application": {
                 "kw": parsed["kw"],
                 "phases": parsed["phases"],
@@ -732,8 +795,8 @@ def issue_ts(
                 "element": location["outputs"]["element_id"],
                 "solution": solution["outputs"]["id"],
                 "breaker": breaker["outputs"]["label"],
-                "customer": "{{redaguota}}",
-                "address": "{{redaguota}}",
+                "customer": document["customer"],
+                "address": document["address"],
             },
         },
         "source_tags": ["rule"],

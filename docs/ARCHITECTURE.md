@@ -17,9 +17,11 @@ flowchart LR
 ```mermaid
 flowchart TD
   parse_request --> locate_connection_point --> select_solution --> size_breaker
-  size_breaker --> check_capacity --> check_voltage_drop --> check_reliability --> check_future
+  size_breaker --> check_capacity
+  check_capacity -->|pass| check_voltage_drop --> check_reliability --> check_future
   check_future -->|pass| draft_ts_section3 --> estimate_cost --> render_map --> engineer_approval --> issue_ts
-  check_future -->|fail| escalate --> estimate_cost
+  check_capacity -->|fail| escalate
+  check_future -->|fail| escalate
 ```
 
 ## Layers
@@ -31,7 +33,7 @@ flowchart TD
 | LangGraph | Ordered nodes, interrupt at approval |
 | Tools | Breaker, locate, A/B/C, four checks, cost, map |
 | Data | Substation 12-608 summaries (real) + tagged synthetic fixtures |
-| Human | Approve, edit §3, rerun a node |
+| Human | Approve, edit §3, rerun a node, or override a failed check with a logged reason |
 
 ## LLM vs Python
 

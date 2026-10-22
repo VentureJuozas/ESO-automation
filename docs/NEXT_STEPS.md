@@ -2,6 +2,8 @@
 
 Honest follow-on work after the hackathon demo. Ranked by how much they would change a jury’s view of a finished product.
 
+Round 2 landed rich inspectors, an official A4 TS, Rankinis vs Agentas timings, fail-path branching with audited override, and live intake. What is still missing:
+
 ## 1. Real ESO data instead of tagged fixtures (highest demo value)
 
 - Power BI exports: free transformer capacity, 35–10 kV line loads, reserved consumption capacity
