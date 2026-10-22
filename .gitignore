@@ -5,4 +5,8 @@ demo/*
 !demo/dashboard.html
 __pycache__/
 *.pyc
+.venv/
+.env
+web/node_modules/
+web/dist/
 
