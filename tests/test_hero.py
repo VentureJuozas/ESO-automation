@@ -1,4 +1,6 @@
-from eso_agent.engine import approve_sync, run_sync_until_interrupt
+import time
+
+from eso_agent.engine import RUNS, approve_sync, run_sync_until_interrupt, snapshot
 from eso_agent.network import HERO_LAT, HERO_LON, nearest_element
 from eso_agent.rules import size_breaker
 
@@ -65,3 +67,6 @@ def test_value_elapsed_is_tool_sum_not_wall_clock():
     total = sum(int(e.get("elapsed_ms") or 0) for e in snap["events"] if e.get("type") == "tool")
     assert snap["value"]["elapsed_ms"] == total
     assert snap["value"]["tools_run"] == 11
+    time.sleep(0.05)
+    later = snapshot(RUNS[snap["id"]])
+    assert later["value"]["elapsed_ms"] == snap["value"]["elapsed_ms"]

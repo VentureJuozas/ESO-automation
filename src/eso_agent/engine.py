@@ -64,7 +64,7 @@ def _value(events: list[dict[str, Any]], started: float, status: str) -> dict[st
             tags[t] = tags.get(t, 0) + 1
         rules += 1
         elapsed_ms += int(ev.get("elapsed_ms") or 0)
-    if elapsed_ms == 0:
+    if not any(ev.get("type") == "tool" for ev in events):
         elapsed_ms = int((time.time() - started) * 1000)
     lo, hi = MANUAL_TIME_ASSUMPTION_MINUTES
     return {
@@ -151,17 +151,19 @@ def list_runs() -> list[dict[str, Any]]:
 
 
 async def _run_fn(run: dict[str, Any], fn) -> None:
-    await _broadcast(run, {"type": "start", "tool": FN_TOOL.get(fn, fn.__name__), "ts": time.time()})
+    start = {"type": "start", "tool": FN_TOOL.get(fn, fn.__name__), "ts": time.time()}
+    run["events"].append(start)
+    await _broadcast(run, start)
     t0 = time.perf_counter()
     run["state"] = {**run["state"], **fn(run["state"])}
+    delay = run.get("delay", _delay())
+    if delay:
+        await asyncio.sleep(delay)
     elapsed = int((time.perf_counter() - t0) * 1000)
     result = (run["state"].get("events") or [None])[-1]
     if result:
         ev = _emit_tool(run, result, elapsed)
         await _broadcast(run, ev)
-    delay = run.get("delay", _delay())
-    if delay:
-        await asyncio.sleep(delay)
 
 
 async def execute(run_id: str) -> None:

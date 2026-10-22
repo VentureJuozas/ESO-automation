@@ -238,7 +238,7 @@ export default function App() {
         )}
 
         <div className="canvas" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          <div className={`exec-hud ${hud.cls}`}>{hud.text}</div>
+          {view === "case" && <div className={`exec-hud ${hud.cls}`}>{hud.text}</div>}
           <div className="workspace">
             <div className="wf-wrap">
               {view === "case" && (
