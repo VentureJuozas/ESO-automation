@@ -1,6 +1,6 @@
 # Architecture
 
-The dashboard is an n8n-style orchestrator over a LangGraph. Deterministic Python makes every engineering decision. The LLM, when a key is present, only parses free text and may rephrase TS §3. An engineer always approves. Queue, runs and audit live in SQLite so a restart keeps the desk.
+The dashboard is an n8n-style orchestrator over a LangGraph. Deterministic Python makes every engineering decision. The LLM, when a key is present, only parses free text and may rephrase TS §3. An engineer always approves. Queue, runs and audit live in SQLite so a restart keeps the desk. **Pristatymas** plays a frozen 4–5 minute jury path (LT/EN). A what-if bar recomputes A/B/C and the four checks live. Missing inputs branch to `request_missing_data` instead of silently using the hero point.
 
 ```mermaid
 flowchart LR
@@ -17,6 +17,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
+  parse_request -->|gaps| request_missing_data
   parse_request --> locate_connection_point --> select_solution --> size_breaker
   size_breaker --> check_capacity
   check_capacity -->|pass| check_voltage_drop --> check_reliability --> check_future
@@ -45,7 +46,8 @@ flowchart TD
 
 | Tool | Input | Output | LLM? |
 |---|---|---|---|
-| parse_request | text + form | kw, phases, coords, existing_kw, deadline | optional |
+| parse_request | text + form | kw, phases, coords, existing_kw, deadline, missing | optional |
+| request_missing_data | parser gaps / missing GIS | letter preview (not sent), provisional A/B/C, sensitivity | no |
 | locate_connection_point | lat, lon | nearest pole/cabinet, feeder | no |
 | select_solution | feeder type, distance | A / B / C | no |
 | size_breaker | **total** permitted kW, phases | C n A from KNOWLEDGE §15 | no |

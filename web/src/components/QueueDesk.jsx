@@ -8,6 +8,7 @@ const STATUS_LT = {
   escalated: "Eskaluota",
   error: "Klaida",
   queued: "Eilėje",
+  waiting_data: "Laukia duomenų",
 };
 
 function slaLabel(sla) {
@@ -116,14 +117,14 @@ export default function QueueDesk({
             </button>
           </div>
         </header>
-        <div className="hud-grid">
+        <div className="hud-grid" data-spot-target="hud">
           <div className="hud"><b>{hud.processed ?? 0}</b><span>Apdorota šiandien</span></div>
           <div className="hud"><b>{hud.saved_min_today ?? 0}</b><span>Inž. min. sutaupyta šiandien</span></div>
           <div className="hud"><b>{hud.monthly_hours ?? 0} h</b><span>Šį mėnesį (prielaida)</span></div>
           <div className="hud"><b>{hud.inbox_depth ?? 0}</b><span>Patvirtinimo eilė</span></div>
         </div>
         <p className="assume">{hud.note || "Minutės ir 40 bylų / mėn. — prielaida, ne ESO statistika."}</p>
-        <div className="table-wrap desk-table">
+        <div className="table-wrap desk-table" data-spot-target="table">
           <table className="grid-table">
             <thead>
               <tr>
@@ -167,7 +168,7 @@ export default function QueueDesk({
           </table>
         </div>
       </div>
-      <aside className="desk-inbox">
+      <aside className="desk-inbox" data-spot-target="inbox">
         <div className="kicker">Inžinieriaus pašto dėžutė</div>
         <h3>Patvirtinimai ir eskalacijos</h3>
         {inbox.length === 0 && <p className="empty">Tuščia — paleiskite eilę.</p>}

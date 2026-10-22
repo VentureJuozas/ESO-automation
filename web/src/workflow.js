@@ -11,6 +11,7 @@ const Y = [36, 196, 356, 516];
 
 export const PIPELINE_NODES = [
   { id: "parse_request", label: "parse_request", caption: "Paraiška", x: X[0], y: Y[0], hue: "#ff6d5a", icon: "doc" },
+  { id: "request_missing_data", label: "request_data", caption: "Duomenys", x: X[0], y: Y[3], hue: "#d97706", icon: "doc" },
   { id: "locate_connection_point", label: "locate_point", caption: "Taškas", x: X[1], y: Y[0], hue: "#3b82f6", icon: "pin" },
   { id: "select_solution", label: "select_solution", caption: "Sprendinys", x: X[2], y: Y[0], hue: "#d97706", icon: "branch" },
   { id: "size_breaker", label: "size_breaker", caption: "Jungiklis", x: X[3], y: Y[0], hue: "#d97706", icon: "branch" },
@@ -28,6 +29,7 @@ export const PIPELINE_NODES = [
 
 export const PIPELINE_EDGES = [
   ["parse_request", "locate_connection_point"],
+  ["parse_request", "request_missing_data"],
   ["locate_connection_point", "select_solution"],
   ["select_solution", "size_breaker"],
   ["size_breaker", "check_capacity"],

@@ -12,7 +12,7 @@ def _wait(c: TestClient, rid: str, tries: int = 80) -> dict:
     snap = None
     for _ in range(tries):
         snap = c.get(f"/api/runs/{rid}").json()
-        if snap["status"] in {"awaiting_approval", "escalated", "issued", "error"}:
+        if snap["status"] in {"awaiting_approval", "escalated", "issued", "error", "waiting_data"}:
             return snap
         time.sleep(0.05)
     return snap

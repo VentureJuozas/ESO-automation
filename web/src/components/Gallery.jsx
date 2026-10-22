@@ -54,7 +54,7 @@ function Taxonomy({ taxonomy }) {
   );
 }
 
-export default function Gallery({ gallery, running, onRun, onOpenRun }) {
+export default function Gallery({ gallery, running, onRun, onWhatIf, onOpenRun }) {
   const last = gallery?.last;
   const cases = last?.results || gallery?.cases || [];
   const [openId, setOpenId] = useState(null);
@@ -69,9 +69,12 @@ export default function Gallery({ gallery, running, onRun, onOpenRun }) {
           <h2>Išduotos TS vs agentas</h2>
           <p className="hint">Sąžiningas back-test. In-scope = 12-608 ir žinomas taškas. Duomenys nebuvo taikomi rezultatui.</p>
         </div>
-        <button className="exec" type="button" onClick={onRun} disabled={running}>
-          {running ? "Skaičiuojama…" : "Paleisti back-test"}
-        </button>
+        <div className="desk-actions">
+          <button className="go" type="button" onClick={onWhatIf} disabled={running}>What-if užpildymas</button>
+          <button className="exec" type="button" onClick={onRun} disabled={running}>
+            {running ? "Skaičiuojama…" : "Paleisti back-test"}
+          </button>
+        </div>
       </header>
       {last && (
         <div className="hud-grid hud-5">
@@ -81,6 +84,11 @@ export default function Gallery({ gallery, running, onRun, onOpenRun }) {
           <div className="hud"><b>{before ? `${Math.round((before.accuracy || 0) * 100)} %` : "—"}</b><span>Prieš (R3)</span></div>
           <div className="hud"><b>{last.taxonomy?.cases?.tool_error ?? 0}</b><span>Įrankio klaidų</span></div>
         </div>
+      )}
+      {gallery?.whatif && (
+        <p className="assume whatif-note">
+          What-if: {gallery.whatif.resolved_matches} / {gallery.whatif.missing_count} trūkstamų bylų tampa atitikimu, kai taškas paimamas iš išduotos TS. Tai ne live balas.
+        </p>
       )}
       <Taxonomy taxonomy={last?.taxonomy} />
       <p className="assume">{last?.note || gallery?.note}</p>

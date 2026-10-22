@@ -21,6 +21,7 @@ class RequestForm(BaseModel):
     customer_type: str = "household"
     pending_kw: float | None = None
     existing_kw: float | None = None
+    required_element: str | None = None
     text: str = ""
     object_name: str = "Naujas buitinis objektas"
 
@@ -42,6 +43,7 @@ class ParsedRequest(BaseModel):
     source_text: str = ""
     extraction: dict[str, Any] = Field(default_factory=dict)
     highlights: list[dict[str, Any]] = Field(default_factory=list)
+    missing: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ToolEvent(BaseModel):

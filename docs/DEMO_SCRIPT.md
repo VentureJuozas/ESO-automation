@@ -1,21 +1,27 @@
 # Demo script — 4–5 minutes
 
-Stage: `make demo` or `docker compose up --build`. Open http://127.0.0.1:8000. No API key. If tiles fail, the map is a green paper schema.
+Stage: `make demo`. Open http://127.0.0.1:8000. Click **Pristatymas**. Toggle **EN** if the jury is English-speaking. Arrow keys move beats. The TS document stays Lithuanian.
 
-Projector: 1366×768 or 1920×1080. Start on **Vadovo eilė**.
+The path is a **frozen replay** — no live batch wait, no tile server.
 
-| Time | Beat | What to click | What to say |
-|---|---|---|---|
-| 0:00 | Desk | — | “This is a manager desk, not a chatbot. Twelve redacted 12-608 applications. SLA is three working days.” |
-| 0:20 | HUD | Point at the four cards | “Processed, engineer minutes saved — tagged as an assumption — and the approval inbox.” |
-| 0:35 | Batch | **Paleisti visas** | “One click runs every case through the same LangGraph. Python decides. The LLM only reads text.” |
-| 1:20 | Inbox | Wait until rows leave *Nauja* | “A/B/C wait for an engineer. Fails do not issue. The inbox is the gate: approve, edit §3, or override with a reason.” |
-| 1:40 | Fail | 100 kW cechas → **Paketas** or the escalate node | “327.7 kW vs 320 kW. The product is a reinforcement brief: 400→630 kVA, feeder split, new TP. Costs are inferred. Next owner is named.” |
-| 2:20 | Canvas | Click the fail row **Drobė** | “Same n8n language as a single run. The graph branched at check_capacity. Downstream nodes are skipped.” |
-| 2:50 | Gallery | **Istorinė galerija** → **Paleisti back-test** | “Sixteen issued files. We do not hide misses. In-scope is 95 %. Overall 84 %. Round 3 was 51 % because we sized the increment, not the total.” |
-| 3:20 | Honesty | Click **26-E-37934** | “Pg-452 is another substation. Category (a). Tool errors: zero. The 25 A vs 32 A at 18 kW is an engineer judgment, not a tweaked table.” |
-| 3:50 | Audit | **Auditas** on any issued/waiting case | “Every tool call, inputs, outputs, tags, override reasons, SHA-256. Survives a restart — SQLite.” |
-| 4:20 | Hero optional | Scenario **Hero** if time | “11 kW, pole 200/3, solution B, 20 A, printable TS. Customer fields are redacted.” |
-| 4:45 | Close | **Atstatyti demo** if you need a clean replay | “One command starts this. The next step is a guided presentation mode, then real GIS and Power BI.” |
+| Time | Beat | Key |
+|---|---|---|
+| 0:00 | Desk HUD | Twelve redacted 12-608 cases. SLA three working days. |
+| 0:25 | Paleisti visas | Frozen statuses flip. Python decides. |
+| 0:50 | Inbox | Approve / edit §3 / override. Waiting-for-data cards sit here too. |
+| 1:15 | Hero map | 11 kW, pole 200/3. Paper map if tiles fail. |
+| 1:35 | Solution B | Overhead, no cabinet → new KAS. |
+| 1:50 | Capacity | 227.7 + 11 vs 320 kW. |
+| 2:05 | TS §3 | Lithuanian wording. Engineer signs. |
+| 2:25 | Fail brief | 100 kW → 327.7 vs 320. Reinforcement pack. |
+| 2:50 | Gallery | In-scope 95 %, overall 84 %. Taxonomy. 26-E-37934 is (a). |
+| 3:20 | Audit | SHA-256, SQLite. |
+| 3:40 | Time saved | Replay ms vs 2–4 h assumption. |
 
-If a tile server is dark: say “frozen replay — the geometry is ours, the basemap is optional.”
+## Live extras (if asked)
+
+- **What-if bar** on a case: drag 11 → 100 kW. Capacity fails, the canvas branch switches to escalate.
+- **Missing data:** open a `Laukia duomenų` row. The graph stopped at `request_missing_data`. Letter preview is not sent. Supply coords → the graph resumes on the same canvas.
+- **What-if fill** in the gallery: of the 7 missing-input files, **6** become matches when the issued TS point is added as virtual GIS. 22-26356 stays an engineer-judgment miss (historical TR swap). This is labelled what-if, not the live score.
+
+**Atstatyti demo** if you need a clean desk after the live extras.

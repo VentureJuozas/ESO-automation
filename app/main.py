@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from eso_agent.audit import build_audit, render_audit_html  # noqa: E402
-from eso_agent.backtest import gallery_index, run_gallery  # noqa: E402
+from eso_agent.backtest import gallery_index, run_gallery, run_gallery_whatif  # noqa: E402
 from eso_agent.brief import render_brief_html  # noqa: E402
 from eso_agent.catalog import architecture_payload  # noqa: E402
 from eso_agent.document import render_ts_html  # noqa: E402
@@ -27,6 +27,8 @@ from eso_agent.engine import (  # noqa: E402
     rerun_from,
     reset_demo,
     resume,
+    supply_data,
+    whatif,
     samples_public,
     scenarios_public,
     snapshot,
@@ -146,6 +148,50 @@ def gallery_get():
 @app.post("/api/gallery/run")
 def gallery_run():
     return run_gallery()
+
+
+@app.post("/api/gallery/whatif")
+def gallery_whatif():
+    return run_gallery_whatif()
+
+
+@app.get("/api/present")
+def present_pack():
+    from eso_agent.present import frozen_pack
+
+    return frozen_pack()
+
+
+class WhatIfBody(BaseModel):
+    kw: float = 11
+    phases: int = 3
+    distance_m: float | None = None
+    pending_kw: float = 0
+    lat: float | None = None
+    lon: float | None = None
+    existing_kw: float = 0
+    text: str = ""
+
+
+class SupplyBody(BaseModel):
+    kw: float | None = None
+    phases: int | None = None
+    lat: float | None = None
+    lon: float | None = None
+    required_element: str | None = None
+    text: str = ""
+
+
+@app.post("/api/whatif")
+def whatif_run(body: WhatIfBody):
+    return whatif(body.model_dump())
+
+
+@app.post("/api/runs/{rid}/supply")
+def supply_run(rid: str, body: SupplyBody):
+    if rid not in RUNS:
+        raise HTTPException(404)
+    return supply_data(rid, body.model_dump(exclude_none=True))
 
 
 @app.get("/api/runs")

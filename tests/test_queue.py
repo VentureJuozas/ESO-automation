@@ -35,7 +35,8 @@ def test_batch_queue_sync_updates_statuses_and_hud():
     assert len(snaps) >= 8
     q = queue_public()
     statuses = {c["status"] for c in q["cases"]}
-    assert statuses <= {"awaiting_approval", "escalated", "issued", "error"}
+    assert statuses <= {"awaiting_approval", "escalated", "issued", "error", "waiting_data"}
+    assert any(c["status"] == "waiting_data" for c in q["cases"])
     assert any(c["status"] == "awaiting_approval" for c in q["cases"])
     assert any(c["status"] == "escalated" and c["mix"] == "fail" for c in q["cases"])
     assert q["hud"]["processed"] >= 8

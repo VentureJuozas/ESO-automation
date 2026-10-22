@@ -268,7 +268,11 @@ def queue_public() -> dict[str, Any]:
         item["sla"] = sla_for(c["submitted_at"], c.get("kw"))
         item["form"] = c.get("form")
         cases.append(item)
-    return {"cases": cases, "hud": queue_hud(), "inbox": [c for c in cases if c["status"] in {"awaiting_approval", "escalated"}]}
+    return {
+        "cases": cases,
+        "hud": queue_hud(),
+        "inbox": [c for c in cases if c["status"] in {"awaiting_approval", "escalated", "waiting_data"}],
+    }
 
 
 def queue_hud(runs: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:

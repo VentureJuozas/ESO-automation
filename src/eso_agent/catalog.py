@@ -142,6 +142,18 @@ TOOLS = [
         "data": "Sintetinė topologija; jokio PII",
     },
     {
+        "id": "request_missing_data",
+        "title": "request_missing_data",
+        "title_lt": "Trūkstami duomenys",
+        "kind": "human",
+        "inputs": "Laukai, kurių parseris ar GIS nerado",
+        "outputs": "Sąrašas, kam rašyti, laiško peržiūra, laikinas A/B/C",
+        "rule": "Be privalomos įvesties eiga nestabdoma tyloje — prašoma duomenų",
+        "rule_ref": {"label": "Prijungimo sąlygų nustatymas — paraiška", "url": ESO_PROCESS, "local": "data/SCOPE.md"},
+        "engineer": "Peržiūrėkite laišką. Nieko nesiunčiame. Užpildę laukus tęskite drobėje.",
+        "data": "Sintetinės spragos. Be asmens duomenų.",
+    },
+    {
         "id": "engineer_approval",
         "title": "engineer_approval",
         "title_lt": "Inžinieriaus patvirtinimas",

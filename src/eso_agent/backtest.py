@@ -466,9 +466,78 @@ def gallery_index() -> dict[str, Any]:
             for c in all_gallery_cases()
         ],
         "last": LAST_GALLERY,
+        "whatif": LAST_WHATIF,
         "before": BEFORE,
         "note": "Tik redaguoti TS. Be kliento vardo, adreso ir skaitiklio.",
     }
+
+
+LAST_WHATIF: dict[str, Any] | None = None
+
+
+def _virtual_el(eid: str, kind: str, feeder: str, bearing: float, dist_m: float) -> dict[str, Any]:
+    from eso_agent.network import STATION, destination
+
+    lat, lon = destination(STATION["lat"], STATION["lon"], bearing, dist_m)
+    return {
+        "id": eid,
+        "kind": kind,
+        "feeder": feeder,
+        "lat": round(lat, 6),
+        "lon": round(lon, 6),
+        "source": "synthetic",
+        "note": "What-if: elementas iš išduotos TS, koordinačių byloje nebuvo.",
+    }
+
+
+def whatif_fill_for(case: dict[str, Any]) -> dict[str, Any]:
+    """Fill gaps from the issued TS. Labelled what-if — not the live score."""
+    from eso_agent.network import extra_elements
+
+    extras: list[dict[str, Any]] = []
+    form = _form_for(case)
+    form["ignore_missing"] = True
+    cid = case["id"]
+    if cid == "23-93436":
+        extras.append(_virtual_el("KS-13154", "cabinet", "L-KS14330", 198.0, 42))
+    elif cid == "20-67807":
+        extras.append(_virtual_el("KS-13160", "cabinet", "L-KS14330", 202.0, 70))
+    elif cid == "20-80254":
+        extras.append(_virtual_el("206/2", "pole", "L-200", 22.0, 80))
+    elif cid in {"22-26356", "21-26840"}:
+        extras.append(_virtual_el("100/14", "pole", "L-KS13058", 268.0, 120))
+    elif cid == "21-64496":
+        extras.append(_virtual_el("205/6", "pole", "L-200", 16.0, 110))
+    elif cid == "23-44040":
+        extras.append(_virtual_el("cut-L-KS14330", "splice", "L-KS14330", 198.0, 220))
+    if extras:
+        form["lat"] = extras[0]["lat"]
+        form["lon"] = extras[0]["lon"]
+        case = {**case, "coord": extras[0], "missing_input": False}
+    from eso_agent.engine import run_sync_until_interrupt
+
+    with extra_elements(extras):
+        snap = run_sync_until_interrupt("intake", delay=0, text=case.get("expected_section3") or "", form=form)
+    cmp = compare_case(case, snap)
+    cmp["whatif"] = True
+    cmp["filled_from"] = "issued TS (virtual GIS point)"
+    return cmp
+
+
+def run_gallery_whatif() -> dict[str, Any]:
+    missing = [c for c in all_gallery_cases() if c.get("missing_input") and c.get("tp_issued") == "12-608"]
+    filled = [whatif_fill_for(c) for c in missing]
+    matches = [r for r in filled if r.get("category") == CAT_OK or r.get("score") == 1]
+    payload = {
+        "mode": "whatif",
+        "note": "What-if: trūkstami taškai užpildyti iš išduotos TS (virtualus GIS). Tai ne live back-test.",
+        "missing_count": len(missing),
+        "resolved_matches": len(matches),
+        "results": filled,
+    }
+    global LAST_WHATIF
+    LAST_WHATIF = payload
+    return payload
 
 
 def run_gallery(limit: int | None = None) -> dict[str, Any]:

@@ -659,6 +659,36 @@ table.cost tr.total td { font-size: 14px; }
 .cat.tool_error { background: #fff1f2; color: #be123c; }
 .cat.engineer_judgment { background: #f5f3ff; color: #6d28d9; }
 .cat.match { background: #ecfdf3; color: #047857; }
+.st.waiting_data { background: #fffbeb; color: #b45309; }
+.present-bar {
+  position: fixed; left: 12px; right: 12px; bottom: 10px; z-index: 40;
+  background: #111; color: #fff; border-radius: 14px; padding: 12px 16px 14px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.28);
+}
+.present-progress { height: 4px; background: #333; border-radius: 99px; margin-bottom: 8px; }
+.present-progress > div { height: 100%; background: #ffd166; border-radius: 99px; }
+.present-row { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.present-bar h3 { margin: 2px 0 6px; font-size: 16px; }
+.present-bar p { margin: 0; font-size: 13px; color: #ddd; max-width: 70ch; }
+.present-nav { display: flex; gap: 6px; flex-shrink: 0; }
+.whatif-bar {
+  display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
+  padding: 8px 12px; background: #f6f6f7; border-bottom: 1px solid var(--line); font-size: 12px;
+}
+.whatif-bar label { display: flex; align-items: center; gap: 6px; }
+.whatif-bar input[type="range"] { width: 120px; }
+.whatif-note { color: #6d28d9; }
+.missing-box { max-width: 720px; }
+.gap-list { margin: 6px 0 10px; padding-left: 16px; font-size: 12px; }
+.letter { white-space: pre-wrap; background: #f6f6f7; padding: 8px; border-radius: 8px; font-size: 11px; max-height: 140px; overflow: auto; }
+body[data-spot="hud"] [data-spot-target="hud"],
+body[data-spot="inbox"] [data-spot-target="inbox"],
+body[data-spot="table"] [data-spot-target="table"],
+body[data-spot="taxonomy"] [data-spot-target="taxonomy"],
+body[data-spot="canvas"] [data-spot-target="canvas"],
+body[data-spot="time"] [data-spot-target="time"] {
+  outline: 3px solid #ffd166; outline-offset: 3px; border-radius: 10px;
+}
 @media (max-width: 1366px) {
   .desk { inset: 8px; }
   .gallery { inset: 8px; padding: 12px 14px; }

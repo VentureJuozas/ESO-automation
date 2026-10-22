@@ -151,6 +151,48 @@ def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
     if not tags:
         tags.append("real")
 
+    missing: list[dict[str, Any]] = []
+    if hits.get("coords", {}).get("source") == "default":
+        missing.append(
+            {
+                "id": "coords",
+                "field": "lat/lon",
+                "party": "customer",
+                "party_lt": "Klientas",
+                "why": "locate_connection_point ir A/B/C",
+                "note": "Be koordinačių negalima parinkti artimiausio elemento.",
+            }
+        )
+    if hits.get("kw", {}).get("source") == "default":
+        missing.append(
+            {
+                "id": "kw",
+                "field": "kw",
+                "party": "customer",
+                "party_lt": "Klientas",
+                "why": "size_breaker ir check_capacity",
+                "note": "Be leistinosios galios jungiklis ir 80 % riba nepatikimi.",
+            }
+        )
+    req = getattr(form, "required_element", None)
+    if req:
+        from eso_agent.network import element_by_id
+
+        try:
+            element_by_id(req)
+        except KeyError:
+            missing.append(
+                {
+                    "id": "element",
+                    "field": "required_element",
+                    "value": req,
+                    "party": "gis",
+                    "party_lt": "GIS / lauko inžinierius",
+                    "why": "locate_connection_point",
+                    "note": f"Elemento {req} nėra 12-608 tinkle.",
+                }
+            )
+
     customer = form.customer_type or "household"
     return ParsedRequest(
         kw=float(kw),
@@ -167,6 +209,7 @@ def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
         source_text=source_text,
         extraction=hits,
         highlights=highlights,
+        missing=missing,
     )
 
 

@@ -34,6 +34,12 @@ function nodeState(id, events, runningTool, failed, skipped = []) {
 function edgeActive(from, to, events, runningTool, failed, skipped = []) {
   const fs = nodeState(from, events, runningTool, failed, skipped);
   const ts = nodeState(to, events, runningTool, failed, skipped);
+  if (from === "parse_request" && to === "request_missing_data") {
+    return events.some((e) => e.tool === "request_missing_data");
+  }
+  if (from === "parse_request" && to === "locate_connection_point") {
+    if (events.some((e) => e.tool === "request_missing_data") && !events.some((e) => e.tool === "locate_connection_point" && e.type === "tool")) return false;
+  }
   if (from === "check_capacity" && to === "escalate") return failed && (fs === "done" || fs === "stop");
   if (from === "check_capacity" && to === "check_voltage_drop") return !skipped.includes("check_voltage_drop") && fs === "done";
   if (from === "check_future" && to === "escalate") return failed && (fs === "done" || fs === "stop") && !skipped.includes("check_future");

@@ -280,8 +280,31 @@ def feeder_by_name(name: str) -> dict[str, Any]:
     raise KeyError(name)
 
 
+_EXTRA: list[dict[str, Any]] = []
+
+
+def extra_elements(els: list[dict[str, Any]]):
+    """Temporarily add GIS elements (what-if fill)."""
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _ctx():
+        n = len(els)
+        _EXTRA.extend(els)
+        try:
+            yield
+        finally:
+            del _EXTRA[-n:]
+
+    return _ctx()
+
+
+def all_elements() -> list[dict[str, Any]]:
+    return list(load_network()["elements"]) + list(_EXTRA)
+
+
 def element_by_id(eid: str) -> dict[str, Any]:
-    for el in load_network()["elements"]:
+    for el in all_elements():
         if el["id"] == eid:
             return el
     raise KeyError(eid)
@@ -290,7 +313,7 @@ def element_by_id(eid: str) -> dict[str, Any]:
 def nearest_element(lat: float, lon: float) -> dict[str, Any]:
     best = None
     best_d = 1e18
-    for el in load_network()["elements"]:
+    for el in all_elements():
         d = haversine_m(lat, lon, el["lat"], el["lon"])
         if d < best_d:
             best_d = d

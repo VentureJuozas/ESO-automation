@@ -27,6 +27,8 @@ class AgentState(TypedDict, total=False):
     approval: dict[str, Any]
     issued: dict[str, Any]
     failed: bool
+    waiting_data: bool
+    missing: dict[str, Any]
     events: list[dict[str, Any]]
 
 
@@ -39,6 +41,11 @@ def _trace(state: AgentState, result: dict[str, Any]) -> AgentState:
 def n_parse(state: AgentState) -> AgentState:
     r = T.parse_request(state.get("text") or "", state.get("form"))
     return {**_trace(state, r), "parsed": r}
+
+
+def n_missing(state: AgentState) -> AgentState:
+    r = T.request_missing_data(state.get("parsed") or {}, state.get("form"))
+    return {**_trace(state, r), "missing": r, "waiting_data": True}
 
 
 def n_locate(state: AgentState) -> AgentState:
@@ -116,6 +123,18 @@ def n_issue(state: AgentState) -> AgentState:
     return {**_trace(state, r), "issued": r}
 
 
+def after_parse(state: AgentState) -> str:
+    parsed = ((state.get("parsed") or {}).get("outputs") or {}).get("parsed") or {}
+    form = state.get("form") or {}
+    if form.get("ignore_missing") or form.get("supplied"):
+        return "locate_connection_point"
+    from eso_agent.missing import detect_gaps
+
+    if detect_gaps(parsed, form):
+        return "request_missing_data"
+    return "locate_connection_point"
+
+
 def after_capacity(state: AgentState) -> str:
     return "escalate" if state.get("failed") else "check_voltage_drop"
 
@@ -134,6 +153,7 @@ def after_approval(state: AgentState) -> str:
 def build_graph():
     g = StateGraph(AgentState)
     g.add_node("parse_request", n_parse)
+    g.add_node("request_missing_data", n_missing)
     g.add_node("locate_connection_point", n_locate)
     g.add_node("select_solution", n_solution)
     g.add_node("size_breaker", n_breaker)
@@ -148,7 +168,12 @@ def build_graph():
     g.add_node("issue_ts", n_issue)
 
     g.add_edge(START, "parse_request")
-    g.add_edge("parse_request", "locate_connection_point")
+    g.add_conditional_edges(
+        "parse_request",
+        after_parse,
+        {"request_missing_data": "request_missing_data", "locate_connection_point": "locate_connection_point"},
+    )
+    g.add_edge("request_missing_data", END)
     g.add_edge("locate_connection_point", "select_solution")
     g.add_edge("select_solution", "size_breaker")
     g.add_edge("size_breaker", "check_capacity")
@@ -189,6 +214,7 @@ def mermaid() -> str:
     except Exception:  # noqa: BLE001
         return (
             "flowchart TD\n"
+            "  parse_request -->|gaps| request_missing_data\n"
             "  parse_request --> locate_connection_point --> select_solution --> size_breaker\n"
             "  size_breaker --> check_capacity\n"
             "  check_capacity -->|pass| check_voltage_drop --> check_reliability --> check_future\n"

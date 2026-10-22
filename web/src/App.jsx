@@ -9,6 +9,10 @@ import TimeSaved from "./components/viz/TimeSaved.jsx";
 import IntakePanel from "./components/viz/IntakePanel.jsx";
 import QueueDesk from "./components/QueueDesk.jsx";
 import Gallery from "./components/Gallery.jsx";
+import PresentGuide from "./components/PresentGuide.jsx";
+import MissingPanel from "./components/MissingPanel.jsx";
+import WhatIfBar from "./components/WhatIfBar.jsx";
+import { t } from "./i18n.js";
 import { scenarioStickies } from "./workflow.js";
 
 const EMPTY_FORM = { kw: 11, phases: 3, lat: 54.55929, lon: 25.27955, text: "", pending_kw: 0, object_name: "Naujas buitinis objektas" };
@@ -36,6 +40,12 @@ export default function App() {
   const [batching, setBatching] = useState(false);
   const [galleryRunning, setGalleryRunning] = useState(false);
   const [inboxBusy, setInboxBusy] = useState(false);
+  const [lang, setLang] = useState("lt");
+  const [presentOn, setPresentOn] = useState(false);
+  const [presentStep, setPresentStep] = useState(0);
+  const [presentPack, setPresentPack] = useState(null);
+  const [whatIf, setWhatIf] = useState({ kw: 11, phases: 3, distance_m: 66, pending_kw: 0 });
+  const [whatIfBusy, setWhatIfBusy] = useState(false);
   const stopRef = useRef(() => {});
 
   function refreshQueue() {
@@ -318,6 +328,100 @@ export default function App() {
     }
   }
 
+  async function runGalleryWhatIf() {
+    setGalleryRunning(true);
+    try {
+      const whatif = await postJSON("/api/gallery/whatif", {});
+      setGallery((g) => ({ ...(g || {}), whatif }));
+    } finally {
+      setGalleryRunning(false);
+    }
+  }
+
+  function applyBeat(pack, idx) {
+    const beat = (pack?.beats || [])[idx];
+    if (!beat) return;
+    setView(beat.view);
+    if (beat.apply === "queue_after") setQueue(pack.queue_after);
+    if (beat.apply === "hero" && pack.hero) {
+      setRun(pack.hero);
+      setEvents(pack.hero.events || []);
+      setScenarioId("hero");
+    }
+    if (beat.apply === "fail" && pack.fail) {
+      setRun(pack.fail);
+      setEvents(pack.fail.events || []);
+      setScenarioId("fail_capacity");
+    }
+    if (beat.apply === "gallery") setGallery((g) => ({ ...(g || {}), last: pack.gallery }));
+    if (beat.select) {
+      setSelected(beat.select);
+      setInspectorOpen(true);
+    }
+    document.body.dataset.spot = beat.spot || "";
+  }
+
+  async function startPresent() {
+    const pack = presentPack || await getJSON("/api/present");
+    setPresentPack(pack);
+    setPresentOn(true);
+    setPresentStep(0);
+    setQueue(pack.queue_before);
+    applyBeat(pack, 0);
+  }
+
+  function goPresent(delta) {
+    if (!presentPack) return;
+    const next = Math.max(0, Math.min((presentPack.beats || []).length - 1, presentStep + delta));
+    setPresentStep(next);
+    applyBeat(presentPack, next);
+  }
+
+  useEffect(() => {
+    if (!presentOn) return undefined;
+    const onKey = (e) => {
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goPresent(1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); goPresent(-1); }
+      if (e.key === "Escape") { setPresentOn(false); document.body.dataset.spot = ""; }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [presentOn, presentPack, presentStep]);
+
+  async function liveWhatIf(vals) {
+    setWhatIfBusy(true);
+    try {
+      const snap = await postJSON("/api/whatif", vals);
+      setRun(snap);
+      setEvents(snap.events || []);
+      setView("case");
+      setSelected(snap.failed ? "escalate" : "check_capacity");
+      setInspectorOpen(true);
+    } finally {
+      setWhatIfBusy(false);
+    }
+  }
+
+  async function supplyMissing() {
+    if (!run?.id) return;
+    setInboxBusy(true);
+    try {
+      const snap = await postJSON(`/api/runs/${run.id}/supply`, {
+        lat: 54.55929,
+        lon: 25.27955,
+        kw: 11,
+        phases: 3,
+        text: "Užpildyta: 11 kW, 3F, 54,55929, 25,27955.",
+      });
+      setRun(snap);
+      setEvents(snap.events || []);
+      setSelected(snap.failed ? "escalate" : "select_solution");
+      refreshQueue();
+    } finally {
+      setInboxBusy(false);
+    }
+  }
+
   async function inboxApprove(item, s3) {
     setInboxBusy(true);
     try { await approve(item, s3); } finally { setInboxBusy(false); }
@@ -335,6 +439,8 @@ export default function App() {
   const llmMode = architecture?.llm_mode || snap?.llm_mode || "offline";
   const hud = runningTool
     ? { cls: "run", text: `Vykdoma · ${runningTool}` }
+    : status === "waiting_data"
+      ? { cls: "wait", text: "Sustabdyta · request_missing_data" }
     : status === "escalated"
       ? { cls: "bad", text: "Šaka · check_capacity → escalate" }
       : waiting
@@ -364,7 +470,7 @@ export default function App() {
         </div>
         <nav className="nav">
           <button className={`item intake-nav${view === "queue" ? " on" : ""}`} type="button" onClick={() => { setView("queue"); refreshQueue(); }}>
-            <b>Vadovo eilė</b>
+            <b>{t(lang, "desk")}</b>
             <small>{queue?.hud?.inbox_depth ?? 0} laukia · {queue?.hud?.new ?? 0} naujos</small>
           </button>
           <button className={`item${view === "gallery" ? " on" : ""}`} type="button" onClick={() => { setView("gallery"); getJSON("/api/gallery").then(setGallery).catch(() => {}); }}>
@@ -420,8 +526,10 @@ export default function App() {
         <header className="top">
           <div className="crumb">{crumb}</div>
           <div className="top-actions">
-            <span className="badge">{llmMode === "offline" ? "Replay / be rakto" : `LLM ${llmMode}`}</span>
-            <span className="badge">SQLite</span>
+            <span className="badge">{llmMode === "offline" ? t(lang, "replay") : `LLM ${llmMode}`}</span>
+            <span className="badge">{t(lang, "sqlite")}</span>
+            <button className={`go${presentOn ? " on" : ""}`} type="button" onClick={() => (presentOn ? (setPresentOn(false), document.body.dataset.spot = "") : startPresent())}>{t(lang, "present")}</button>
+            <button className="go" type="button" onClick={() => setLang((l) => (l === "lt" ? "en" : "lt"))}>{t(lang, "lang")}</button>
             {(view === "case" || view === "intake") && (
               <>
                 {status === "issued" && run?.id && (
@@ -430,23 +538,26 @@ export default function App() {
                 {run?.id && (
                   <a className="go" href={`/api/runs/${run.id}/audit.html`} target="_blank" rel="noreferrer">Auditas</a>
                 )}
-                <button className="exec" type="button" onClick={start} disabled={status === "running" || Boolean(runningTool)}>Paleisti eigą</button>
+                <button className="exec" type="button" onClick={start} disabled={status === "running" || Boolean(runningTool)}>{t(lang, "runFlow")}</button>
               </>
             )}
             {view === "queue" && (
-              <button className="exec" type="button" onClick={batchAll} disabled={batching || (queue?.hud?.new || 0) === 0}>Paleisti visas</button>
+              <button className="exec" type="button" onClick={batchAll} disabled={batching || (queue?.hud?.new || 0) === 0}>{t(lang, "runAll")}</button>
             )}
           </div>
         </header>
 
         {view === "case" && (
-          <TimeSaved comparison={value?.comparison} />
+          <div data-spot-target="time"><TimeSaved comparison={value?.comparison} /></div>
+        )}
+        {view === "case" && (
+          <WhatIfBar values={whatIf} onChange={setWhatIf} onLive={liveWhatIf} busy={whatIfBusy} />
         )}
 
         <div className="canvas" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           {view === "case" && <div className={`exec-hud ${hud.cls}`}>{hud.text}</div>}
           <div className="workspace">
-            <div className="wf-wrap">
+            <div className="wf-wrap" data-spot-target="canvas">
               {view === "queue" && (
                 <QueueDesk
                   queue={queue}
@@ -458,10 +569,13 @@ export default function App() {
                   onApprove={inboxApprove}
                   onOverride={inboxOverride}
                   onEdit={inboxEdit}
+                  lang={lang}
                 />
               )}
               {view === "gallery" && (
-                <Gallery gallery={gallery} running={galleryRunning} onRun={runGallery} onOpenRun={openRun} />
+                <div data-spot-target="taxonomy">
+                  <Gallery gallery={gallery} running={galleryRunning} onRun={runGallery} onWhatIf={runGalleryWhatIf} onOpenRun={openRun} />
+                </div>
               )}
               {view === "intake" && (
                 <IntakePanel form={form} setForm={setForm} samples={samples} onStart={start} running={Boolean(runningTool)} />
@@ -568,6 +682,11 @@ export default function App() {
               <button type="button" className="insp-reopen" onClick={() => setInspectorOpen(true)}>Mazgas</button>
             ))}
           </div>
+          {view === "case" && status === "waiting_data" && (
+            <div className="dock">
+              <MissingPanel missing={snap?.missing} onSupply={supplyMissing} busy={inboxBusy} />
+            </div>
+          )}
           {view === "case" && status === "escalated" && (
             <div className="dock bad">
               <div style={{ flex: 1 }}>
@@ -610,6 +729,17 @@ export default function App() {
           )}
         </div>
       </section>
+      {presentOn && (
+        <PresentGuide
+          pack={presentPack}
+          step={presentStep}
+          lang={lang}
+          onPrev={() => goPresent(-1)}
+          onNext={() => goPresent(1)}
+          onClose={() => { setPresentOn(false); document.body.dataset.spot = ""; }}
+          onLang={() => setLang((l) => (l === "lt" ? "en" : "lt"))}
+        />
+      )}
     </div>
   );
 }

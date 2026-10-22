@@ -81,6 +81,7 @@ def parse_request(text: str = "", form: dict[str, Any] | None = None) -> dict[st
             "source_text": parsed.source_text,
             "extraction": parsed.extraction,
             "highlights": parsed.highlights,
+            "missing": parsed.missing,
             "customer_placeholder": REDACTED_CUSTOMER,
             "address_placeholder": REDACTED_ADDRESS,
             "properly_submitted": {
@@ -820,5 +821,30 @@ def issue_ts(
         },
         "source_tags": ["rule"],
         "notes": ["Galiojimas = parengimo data + 1 metai. Kliento asmens duomenų nėra."],
+        "ok": True,
+    })
+
+
+def request_missing_data(parsed_event: dict[str, Any], form: dict[str, Any] | None = None) -> dict[str, Any]:
+    from eso_agent.missing import detect_gaps, draft_message, provisional
+
+    parsed = (parsed_event.get("outputs") or {}).get("parsed") or parsed_event
+    gaps = detect_gaps(parsed, form)
+    letter = draft_message(gaps, parsed.get("object_name") or "Objektas (redaguota)")
+    prov = provisional(gaps)
+    return _annotate({
+        "tool": "request_missing_data",
+        "title": "Trūkstami duomenys",
+        "llm": False,
+        "inputs": {"gaps": [g.get("id") for g in gaps]},
+        "outputs": {
+            "gaps": gaps,
+            "letter": letter,
+            "provisional": prov,
+            "waiting": True,
+            "sent": False,
+        },
+        "source_tags": ["rule", "synthetic"],
+        "notes": ["Laiškas nebuvo išsiųstas. Eiga laukia įvesties ir tęsia nuo šio mazgo."],
         "ok": True,
     })

@@ -18,12 +18,14 @@ from eso_agent.graph import (
     n_issue,
     n_locate,
     n_map,
+    n_missing,
     n_parse,
     n_quality,
     n_reliability,
     n_solution,
 )
 from eso_agent.llm import llm_mode
+from eso_agent.missing import detect_gaps
 from eso_agent.rules import MANUAL_TIME_ASSUMPTION_MINUTES, MANUAL_TIME_ASSUMPTION_NOTE
 from eso_agent.queue import attach_run, ensure_queue, get_case, queue_public, reset_queue, sync_case_from_run
 from eso_agent.scenarios import INTAKE_SAMPLES, all_scenarios, get_scenario
@@ -32,6 +34,7 @@ from eso_agent.timing import comparison_payload, replay_ms
 
 PIPELINE_ORDER = [
     "parse_request",
+    "request_missing_data",
     "locate_connection_point",
     "select_solution",
     "size_breaker",
@@ -51,6 +54,7 @@ CHECKS = [n_capacity, n_quality, n_reliability, n_future]
 POST = [n_draft, n_cost, n_map]
 FN_TOOL = {
     n_parse: "parse_request",
+    n_missing: "request_missing_data",
     n_locate: "locate_connection_point",
     n_solution: "select_solution",
     n_breaker: "size_breaker",
@@ -149,6 +153,7 @@ def snapshot(run: dict[str, Any]) -> dict[str, Any]:
         "cost": (st.get("cost") or {}).get("outputs"),
         "map": (st.get("map") or {}).get("outputs"),
         "escalate": (st.get("escalate") or {}).get("outputs"),
+        "missing": (st.get("missing") or {}).get("outputs"),
         "issued": (st.get("issued") or {}).get("outputs"),
         "approval": st.get("approval"),
         "value": _value(run["events"], run["started"], run["status"]),
@@ -165,6 +170,9 @@ def snapshot(run: dict[str, Any]) -> dict[str, Any]:
 
 
 def _skipped(run: dict[str, Any]) -> list[str]:
+    if run["state"].get("waiting_data"):
+        ran = {e.get("tool") for e in run["events"] if e.get("type") == "tool"}
+        return [t for t in PIPELINE_ORDER if t not in ran and t != "request_missing_data"]
     if not run["state"].get("failed") or run["state"].get("overridden"):
         return []
     ran = {e.get("tool") for e in run["events"] if e.get("type") == "tool"}
@@ -221,6 +229,14 @@ async def _run_fn(run: dict[str, Any], fn) -> None:
         await _broadcast(run, ev)
 
 
+def _has_gaps(state: dict[str, Any]) -> bool:
+    form = state.get("form") or {}
+    if form.get("ignore_missing") or form.get("supplied"):
+        return False
+    parsed = ((state.get("parsed") or {}).get("outputs") or {}).get("parsed") or {}
+    return bool(detect_gaps(parsed, form))
+
+
 async def execute(run_id: str) -> None:
     run = RUNS[run_id]
     run["status"] = "running"
@@ -228,6 +244,16 @@ async def execute(run_id: str) -> None:
     try:
         for fn in PRE_CHECK:
             await _run_fn(run, fn)
+            if fn is n_parse and _has_gaps(run["state"]):
+                await _run_fn(run, n_missing)
+                run["status"] = "waiting_data"
+                interrupt = _interrupt_event(run)
+                run["events"].append(interrupt)
+                sync_case_from_run(run)
+                save_run(run)
+                await _broadcast(run, interrupt)
+                await _broadcast(run, {"type": "status", "status": "waiting_data", "id": run_id, "snapshot": snapshot(run)})
+                return
         for fn in CHECKS:
             await _run_fn(run, fn)
             if run["state"].get("failed"):
@@ -292,6 +318,25 @@ def create_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) 
 
 
 def _interrupt_event(run: dict[str, Any]) -> dict[str, Any]:
+    if run["state"].get("waiting_data"):
+        meta = tool_by_id("request_missing_data")
+        return {
+            "type": "interrupt",
+            "tool": "request_missing_data",
+            "title": meta.get("title_lt") or "Trūkstami duomenys",
+            "title_lt": meta.get("title_lt"),
+            "kind": "human",
+            "failed": False,
+            "status": "waiting_data",
+            "rule_ref": meta.get("rule_ref"),
+            "engineer": meta.get("engineer"),
+            "inputs": {"waiting": True},
+            "outputs": (run["state"].get("missing") or {}).get("outputs") or {"waiting": True},
+            "source_tags": ["rule"],
+            "ok": True,
+            "elapsed_ms": 0,
+            "ts": time.time(),
+        }
     failed = bool(run["state"].get("failed"))
     tool = "escalate" if failed else "engineer_approval"
     meta = tool_by_id(tool)
@@ -494,6 +539,14 @@ def run_sync_until_interrupt(
 
     for fn in PRE_CHECK:
         _step(fn)
+        if fn is n_parse and _has_gaps(state):
+            _step(n_missing)
+            run["status"] = "waiting_data"
+            run["state"] = state
+            run["events"].append(_interrupt_event(run))
+            sync_case_from_run(run)
+            save_run(run)
+            return snapshot(run)
     for fn in CHECKS:
         _step(fn)
         if state.get("failed"):
@@ -618,6 +671,79 @@ def batch_queue_sync() -> list[dict[str, Any]]:
 
 def batching() -> bool:
     return bool(_BATCH.get("running"))
+
+
+def _continue_pipeline(run: dict[str, Any]) -> dict[str, Any]:
+    state = run["state"]
+
+    def _step(fn):
+        nonlocal state
+        name = FN_TOOL.get(fn, fn.__name__)
+        state = {**state, **fn(state)}
+        result = (state.get("events") or [None])[-1]
+        if result:
+            _emit_tool(run, result, replay_ms(name))
+        run["state"] = state
+
+    _step(n_parse)
+    if _has_gaps(state):
+        _step(n_missing)
+        run["status"] = "waiting_data"
+        run["events"].append(_interrupt_event(run))
+        sync_case_from_run(run)
+        save_run(run)
+        return snapshot(run)
+    for fn in PRE_CHECK[1:]:
+        _step(fn)
+    for fn in CHECKS:
+        _step(fn)
+        if state.get("failed"):
+            _step(n_escalate)
+            break
+    if not state.get("failed"):
+        for fn in POST:
+            _step(fn)
+    run["status"] = "escalated" if state.get("failed") else "awaiting_approval"
+    run["events"].append(_interrupt_event(run))
+    sync_case_from_run(run)
+    save_run(run)
+    return snapshot(run)
+
+
+def supply_data(run_id: str, fields: dict[str, Any]) -> dict[str, Any]:
+    """Resume a waiting_data run after the engineer fills gaps."""
+    run = RUNS[run_id]
+    form = dict(run["state"].get("form") or {})
+    for key, val in (fields or {}).items():
+        if val is not None and val != "":
+            form[key] = val
+    form["supplied"] = True
+    form["ignore_missing"] = True
+    run["state"]["form"] = form
+    if fields.get("text"):
+        run["state"]["text"] = fields["text"]
+    run["state"]["waiting_data"] = False
+    run["state"]["failed"] = False
+    run["status"] = "running"
+    run["audit"] = list(run.get("audit") or []) + [
+        {"ts": time.time(), "action": "supply_data", "fields": sorted(form.keys()), "actor": "engineer"}
+    ]
+    return _continue_pipeline(run)
+
+
+def whatif(form: dict[str, Any]) -> dict[str, Any]:
+    """Deterministic live recompute. Not attached to the manager queue."""
+    from eso_agent.network import STATION, destination
+
+    payload = dict(form or {})
+    dist = payload.pop("distance_m", None)
+    if dist not in (None, ""):
+        lat, lon = destination(STATION["lat"], STATION["lon"], 18.0, float(dist))
+        payload["lat"] = lat
+        payload["lon"] = lon
+    payload["ignore_missing"] = True
+    payload.setdefault("text", f"What-if {payload.get('kw')} kW {payload.get('phases')}F.")
+    return run_sync_until_interrupt("intake", delay=0, text=payload.get("text") or "", form=payload)
 
 
 def reset_demo() -> dict[str, Any]:
