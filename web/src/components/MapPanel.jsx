@@ -4,7 +4,19 @@ import "leaflet/dist/leaflet.css";
 import { fmtLt } from "../steps.js";
 import SourceTags from "./SourceTags.jsx";
 
+function paper(m, label) {
+  const pane = m.getPane("tilePane");
+  if (pane) pane.style.background = "#d5e0c6";
+  m.attributionControl?.setPrefix("");
+  m.attributionControl?.addAttribution(label || "Offline schema · be plytelių");
+}
+
 function addTiles(m) {
+  const offline = document.body?.dataset?.offline === "1" || /offline=1/.test(window.location.search);
+  if (offline) {
+    paper(m, "Šaldytas replay · schema be tinklo");
+    return;
+  }
   const esri = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 19,
     attribution: "Tiles © Esri · topologija sintetinė",
@@ -20,6 +32,13 @@ function addTiles(m) {
     swapped = true;
     m.removeLayer(esri);
     osm.addTo(m);
+    let papered = false;
+    osm.on("tileerror", () => {
+      if (papered) return;
+      papered = true;
+      m.removeLayer(osm);
+      paper(m);
+    });
   });
 }
 

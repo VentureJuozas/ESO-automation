@@ -7,6 +7,7 @@ from typing import Any
 
 from eso_agent.network import HERO_LAT, HERO_LON, element_by_id
 from eso_agent.rules import HOUSEHOLD_DEADLINE_DAYS, issuing_deadline_days
+from eso_agent.store import load_queue, save_queue
 from eso_agent.timing import MONTHLY_CASES_ASSUMPTION, comparison_payload
 
 
@@ -202,12 +203,18 @@ def reset_queue() -> list[dict[str, Any]]:
                 "sla": sla_for(spec["submitted_at"], kw),
             }
         )
+    save_queue(QUEUE)
     return QUEUE
 
 
 def ensure_queue() -> list[dict[str, Any]]:
-    if not QUEUE:
-        reset_queue()
+    if QUEUE:
+        return QUEUE
+    stored = load_queue()
+    if stored:
+        QUEUE.extend(stored)
+        return QUEUE
+    reset_queue()
     return QUEUE
 
 
@@ -251,6 +258,7 @@ def sync_case_from_run(run: dict[str, Any]) -> None:
     case["sla"] = sla_for(case["submitted_at"], case.get("kw"))
     case["failed"] = bool((run.get("state") or {}).get("failed"))
     case["overridden"] = bool((run.get("state") or {}).get("overridden"))
+    save_queue(QUEUE)
 
 
 def queue_public() -> dict[str, Any]:

@@ -72,6 +72,7 @@ def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
     lat = _f(form.lat)
     lon = _f(form.lon)
     pending = _f(form.pending_kw)
+    existing = _f(form.existing_kw)
     object_name = form.object_name or "Naujas buitinis objektas"
 
     if source_text:
@@ -144,6 +145,8 @@ def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
     if pending is None:
         pending = 0.0
         tags.append("synthetic")
+    if existing is None:
+        existing = 0.0
 
     if not tags:
         tags.append("real")
@@ -156,6 +159,7 @@ def parse_offline(text: str, form: RequestForm | None = None) -> ParsedRequest:
         lon=float(lon),
         customer_type=customer,
         pending_kw=float(pending or 0),
+        existing_kw=float(existing or 0),
         object_name=object_name,
         parse_mode=parse_mode,  # type: ignore[arg-type]
         warnings=warnings,

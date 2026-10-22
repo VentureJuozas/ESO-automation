@@ -53,6 +53,9 @@ export default function App() {
     getJSON("/api/runs").then(setHistory).catch(() => {});
     refreshQueue();
     getJSON("/api/gallery").then(setGallery).catch(() => {});
+    getJSON("/api/health").then((h) => {
+      if (h.offline) document.body.dataset.offline = "1";
+    }).catch(() => { document.body.dataset.offline = "1"; });
   }, []);
 
   useEffect(() => {
@@ -296,9 +299,13 @@ export default function App() {
   }
 
   async function resetQueue() {
-    const q = await postJSON("/api/queue/reset", {});
+    const q = await postJSON("/api/demo/reset", {});
     setQueue(q);
     setBatching(false);
+    setRun(null);
+    setEvents([]);
+    setHistory([]);
+    setGallery((g) => ({ ...(g || {}), last: null }));
   }
 
   async function runGallery() {
@@ -414,6 +421,7 @@ export default function App() {
           <div className="crumb">{crumb}</div>
           <div className="top-actions">
             <span className="badge">{llmMode === "offline" ? "Replay / be rakto" : `LLM ${llmMode}`}</span>
+            <span className="badge">SQLite</span>
             {(view === "case" || view === "intake") && (
               <>
                 {status === "issued" && run?.id && (

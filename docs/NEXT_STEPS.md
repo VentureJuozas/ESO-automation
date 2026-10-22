@@ -1,38 +1,43 @@
-# Next steps
+# Next steps — production roadmap
 
-Honest follow-on work after the hackathon demo. Ranked by how much they would change a jury’s view of a finished product.
+Ranked leftover product work, then a phased path out of the hackathon demo.
 
-Round 3 landed the manager queue desk, historical gallery / back-test, reinforcement brief, and immutable audit export. After this round there is time for about one more substantial pass.
+## Round 5 (next, this session)
 
-## 1. Presentation / demo mode + final polish (next, last round)
+**Guided presentation / demo mode** on the same n8n canvas: a 4–5 minute jury path with speaker beats (desk → Paleisti visas → inbox → fail brief → gallery taxonomy → audit hash), a “Kaip demonstruoti” overlay, and a one-click freeze of the recorded replay.
 
-- Guided 4–5 minute path: queue HUD → Paleisti visas → inbox approve → fail brief → gallery honesty → audit hash
-- Presenter overlay / “Kaip demonstruoti” with timed beats and speaker notes
-- Freeze a recorded replay so the jury path never depends on live tile servers
-- Compact the desk on a projector (1366-wide) without losing the n8n canvas language
+## Phase 1 — Real ESO data
 
-## 2. Real ESO data instead of tagged fixtures
+- Power BI: free transformer capacity, 35–10 kV line loads, reserved consumption
+- GIS / redacted `Objects_network_power.csv` once privacy is signed off (replace synthetic poles)
+- Official application queue (proper-submission clock) instead of the 12 synthetic rows
+- SharePoint issued-TS templates for §1 / §2 variants
 
-- Power BI exports: free transformer capacity, 35–10 kV line loads, reserved consumption capacity
-- Internal TR load tool (hackathon network only today)
-- SharePoint issued-TS examples for §1/§2 template variants
-- Redacted `Objects_network_power.csv` coordinates once privacy is signed off, replacing synthetic poles/cabinets
+## Phase 2 — Authoritative annexes
 
-## 3. Authoritative standard annexes
+- Technologinės plėtros standartas PDFs (annex 12 for 0.4 kV)
+- Replace unverified 600 m / 80 kW snippets with signed rule text
+- Full `Kofai` diversity sheets
+- Real fuse and conductor per feeder (today only L-KS14330 315 A is real)
 
-- Ingest the Technologinės plėtros standartas PDFs (annex 12 for 0.4 kV lines)
-- Replace the unverified 600 m / 80 kW snippets with signed rule text
-- Load full `Kofai` diversity sheets rather than the extracted arrays
+## Phase 3 — Security and data protection
 
-## 4. Full voltage-drop path
+- No personal data in prompts, logs, maps or SQLite (already redacted in the demo)
+- Persist audit with access control; sign exports with an ESO key, not just SHA-256
+- Role split: manager desk vs engineer inbox vs read-only auditor
+- Retention and deletion aligned with the customer portal
 
-- Real conductor type and length per segment
-- Per-meter usable min voltage after event filters, all three phases
-- Short-circuit current and selectivity as a blocking check
+## Phase 4 — Human-in-the-loop policy
 
-## 5. ESO systems, evaluation, security
-
-- Read applications from the official queue (proper-submission clock)
+- Override remains mandatory on failed checks; no silent issue
+- Engineer correction loop (26-E-37536 style) then re-issue
 - Write the issued TS and GIS annex back to the document store
-- Persist the audit trail beyond the in-memory demo process
-- Keep personal data out of prompts, logs and maps
+- Sample 100 % of escalations and a rotating % of issued A/B/C for QA
+
+## Phase 5 — Rollout and KPIs
+
+- Pilot: one desk on 12-608 / Vilnius district, shadow mode (agent prepares, engineer still owns)
+- KPIs: median minutes to draft, % issued without override, in-scope back-test ≥ 90 %, SLA misses, engineer minutes saved (measured, not assumed)
+- Then expand feeders and customer types inside 0.4 kV + 0.4/10 kV only (SCOPE)
+
+Do not expand to generation, 10 kV works, or other substations until Phase 1 data is real.

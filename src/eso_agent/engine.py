@@ -25,8 +25,9 @@ from eso_agent.graph import (
 )
 from eso_agent.llm import llm_mode
 from eso_agent.rules import MANUAL_TIME_ASSUMPTION_MINUTES, MANUAL_TIME_ASSUMPTION_NOTE
-from eso_agent.queue import attach_run, ensure_queue, get_case, queue_public, sync_case_from_run
+from eso_agent.queue import attach_run, ensure_queue, get_case, queue_public, reset_queue, sync_case_from_run
 from eso_agent.scenarios import INTAKE_SAMPLES, all_scenarios, get_scenario
+from eso_agent.store import clear_all, load_runs, save_run
 from eso_agent.timing import comparison_payload, replay_ms
 
 PIPELINE_ORDER = [
@@ -65,6 +66,12 @@ FN_TOOL = {
 }
 
 RUNS: dict[str, dict[str, Any]] = {}
+
+
+def hydrate_runs() -> None:
+    if RUNS:
+        return
+    RUNS.update(load_runs())
 
 
 def _delay() -> float:
@@ -235,10 +242,12 @@ async def execute(run_id: str) -> None:
         sync_case_from_run(run)
         await _broadcast(run, interrupt)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
+        save_run(run)
     except Exception as exc:  # noqa: BLE001
         run["status"] = "error"
         run["error"] = str(exc)
         sync_case_from_run(run)
+        save_run(run)
         await _broadcast(run, {"type": "error", "message": str(exc)})
 
 
@@ -278,6 +287,7 @@ def create_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) 
     RUNS[rid] = run
     if run["queue_id"]:
         attach_run(run["queue_id"], rid)
+    save_run(run)
     return run
 
 
@@ -351,6 +361,7 @@ async def resume(
         sync_case_from_run(run)
         await _broadcast(run, interrupt)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
+        save_run(run)
         return snapshot(run)
     if decision == "edit" and section3:
         if run["state"].get("failed") and not run["state"].get("overridden"):
@@ -362,6 +373,7 @@ async def resume(
         run["status"] = "awaiting_approval"
         sync_case_from_run(run)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
+        save_run(run)
         return snapshot(run)
     if decision == "approve":
         if run["state"].get("failed") and not run["state"].get("overridden"):
@@ -374,9 +386,11 @@ async def resume(
         sync_case_from_run(run)
         done = {"type": "done", "status": "issued", "id": run_id, "snapshot": snapshot(run)}
         await _broadcast(run, done)
+        save_run(run)
         return snapshot(run)
     run["status"] = "escalated"
     await _broadcast(run, {"type": "done", "status": "escalated", "id": run_id, "snapshot": snapshot(run)})
+    save_run(run)
     return snapshot(run)
 
 
@@ -435,6 +449,7 @@ async def rerun_from(run_id: str, from_tool: str, overrides: dict[str, Any] | No
     interrupt = _interrupt_event(run)
     run["events"].append(interrupt)
     sync_case_from_run(run)
+    save_run(run)
     await _broadcast(run, interrupt)
     await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
     return snapshot(run)
@@ -491,6 +506,7 @@ def run_sync_until_interrupt(
     run["state"] = state
     run["events"].append(_interrupt_event(run))
     sync_case_from_run(run)
+    save_run(run)
     return snapshot(run)
 
 
@@ -506,6 +522,7 @@ def approve_sync(run_id: str, section3: str | None = None) -> dict[str, Any]:
     _emit_tool(run, run["state"]["events"][-1], replay_ms("issue_ts"))
     run["status"] = "issued"
     sync_case_from_run(run)
+    save_run(run)
     return snapshot(run)
 
 
@@ -535,6 +552,7 @@ def override_sync(run_id: str, reason: str) -> dict[str, Any]:
     run["status"] = "awaiting_approval"
     run["events"].append(_interrupt_event(run))
     sync_case_from_run(run)
+    save_run(run)
     return snapshot(run)
 
 
@@ -600,6 +618,17 @@ def batch_queue_sync() -> list[dict[str, Any]]:
 
 def batching() -> bool:
     return bool(_BATCH.get("running"))
+
+
+def reset_demo() -> dict[str, Any]:
+    """Wipe SQLite + memory and reseed the synthetic queue."""
+    RUNS.clear()
+    from eso_agent.queue import QUEUE
+
+    QUEUE.clear()
+    clear_all()
+    reset_queue()
+    return queue_public()
 
 
 def scenarios_public() -> list[dict[str, Any]]:

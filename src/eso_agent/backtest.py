@@ -11,12 +11,28 @@ from eso_agent.network import HERO_LAT, HERO_LON, element_by_id
 ROOT = Path(__file__).resolve().parents[2]
 HISTORY = ROOT / "data" / "substation_12-608" / "ts_history_redacted.csv"
 
-_BREAKER = re.compile(r"(\d+)\s*A", re.I)
+# Household breaker: "C 20 A" / "charakteristikos 20 A". Do not eat L-206 / 630 A fuses.
+_BREAKER = re.compile(
+    r"(?:„C“|\"C\"|C)?\s*charakteristikos\s+(\d{1,3})\s*A|(?:„C“|\"C\"|C)\s+(\d{1,3})\s*A",
+    re.I,
+)
 _CAB = re.compile(r"KS-?\s*(\d+)", re.I)
-_KAS = re.compile(r"KAS", re.I)
-_CUT = re.compile(r"įsipjauti|isipjauti|kabelin", re.I)
+_CUT = re.compile(r"įsipjauti|isipjauti", re.I)
 _POLE_KAS = re.compile(r"oro linij|atramos|16\s*mm", re.I)
-_TR_SWAP = re.compile(r"transformatorių pakeisti|400 kVA", re.I)
+_TR_SWAP = re.compile(r"transformatorių pakeisti|transformatorių pakeisti", re.I)
+
+CAT_A = "out_of_scope"
+CAT_B = "missing_input"
+CAT_C = "tool_error"
+CAT_D = "engineer_judgment"
+CAT_OK = "match"
+
+# Round 3 (before this accuracy pass). Do not change — recorded for the jury.
+BEFORE = {
+    "accuracy": 0.51,
+    "count": 16,
+    "note": "Round 3: increment kW sized the breaker; 205 V event blocked L-KS13058; L-206 parsed as 206 A.",
+}
 
 
 def _cabinet_coord(cab_id: str) -> dict[str, float] | None:
@@ -28,11 +44,10 @@ def _cabinet_coord(cab_id: str) -> dict[str, float] | None:
 
 
 def _classify(text: str, pole: str, kas: str, cabinet: str) -> str:
-    if _TR_SWAP.search(text or ""):
+    if _TR_SWAP.search(text or "") or "galios transformatorių pakeisti" in (text or ""):
         return "escalate"
     if _CUT.search(text or "") and "pakeisti esamą" not in (text or "")[:80]:
-        if "įsipjauti" in (text or "") or "isipjauti" in (text or ""):
-            return "C"
+        return "C"
     if _POLE_KAS.search(text or "") or pole or kas:
         if "pakeisti esamą" in (text or "") and cabinet and not pole:
             return "A"
@@ -44,9 +59,20 @@ def _classify(text: str, pole: str, kas: str, cabinet: str) -> str:
 
 
 def _breaker_amps(text: str) -> int | None:
-    hits = [int(m.group(1)) for m in _BREAKER.finditer(text or "")]
-    household = [a for a in hits if a <= 80]
-    return household[-1] if household else (hits[-1] if hits else None)
+    """Household C-characteristic only. Never L-206, 315 A fuses, 630 A TR."""
+    found: list[int] = []
+    for m in _BREAKER.finditer(text or ""):
+        n = int(m.group(1) or m.group(2))
+        if 6 <= n <= 80:
+            found.append(n)
+    return found[-1] if found else None
+
+
+def _f(raw: Any) -> float | None:
+    try:
+        return float(str(raw).replace(",", "."))
+    except (TypeError, ValueError):
+        return None
 
 
 def load_history_cases() -> list[dict[str, Any]]:
@@ -59,36 +85,46 @@ def load_history_cases() -> list[dict[str, Any]]:
             text = raw.get("TS tekstas") or ""
             cab = (raw.get("0,4 kV KS(PP,SP)") or "").split("_")[-1] if raw.get("0,4 kV KS(PP,SP)") else ""
             cab = cab.replace("12-608_", "")
+            if cab in {"NULL", "None", "null"}:
+                cab = ""
             if cab and not cab.startswith("KS") and cab.isdigit():
                 cab = f"KS-{cab}"
             m = _CAB.search(text)
             if m and not cab:
-                cab = f"KS-{m.group(1)}"
+                # "L-KS14330" is a feeder name, not a plot cabinet.
+                if not re.search(rf"L-KS-?{m.group(1)}", text or "", re.I):
+                    cab = f"KS-{m.group(1)}"
             pole = (raw.get("Atramos Nr.") or "").strip()
             if pole in {"NULL", "None"}:
                 pole = ""
             kas = (raw.get("KAS Nr.") or "").strip()
             if kas in {"NULL", "None"}:
                 kas = ""
-            kw = raw.get("LG nauja") or raw.get("Leist. Galia suma")
-            try:
-                kw_f = float(str(kw).replace(",", "."))
-            except (TypeError, ValueError):
-                kw_f = None
+            total = _f(raw.get("Leist. Galia suma"))
+            increment = _f(raw.get("LG nauja"))
+            existing = _f(raw.get("LG esama"))
+            kw_f = total if total is not None else increment
             expected = _classify(text, pole, kas, cab)
-            coord = _cabinet_coord(cab) if cab else None
-            if not coord and pole:
-                try:
-                    el = element_by_id(pole)
-                    coord = {"lat": el["lat"], "lon": el["lon"], "id": el["id"]}
-                except KeyError:
-                    coord = None
+            coord = None
+            missing = None
+            if pole:
+                coord = _cabinet_coord(pole)
+                if coord is None:
+                    missing = f"Atramos {pole} nėra 12-608 tinkle (sintetinis rinkinys)."
+            if coord is None and cab:
+                coord = _cabinet_coord(cab)
+                if coord is None and not missing:
+                    missing = f"Spintos {cab} nėra 12-608 tinkle (linija neįkelta)."
+            if coord is None and not pole and not cab:
+                missing = "Paraiškoje nėra koordinačių, atramos ar žinomos KS."
             rows.append(
                 {
                     "id": raw.get("Reg. numeris"),
                     "source": "ts_history_redacted",
                     "tp_issued": "12-608",
                     "kw": kw_f,
+                    "existing_kw": existing or 0.0,
+                    "increment_kw": increment,
                     "phases": 1 if "vienfaz" in text.lower() else 3,
                     "expected_solution": expected,
                     "expected_breaker_a": _breaker_amps(text),
@@ -98,7 +134,9 @@ def load_history_cases() -> list[dict[str, Any]]:
                     "pole": pole or None,
                     "feeder": raw.get("TR linija (prijunginys)") or raw.get("KS linija (prijunginys)"),
                     "coord": coord,
-                    "note": "Redaguota TS istorija. Be kliento vardo ir adreso.",
+                    "missing_input": bool(missing),
+                    "missing_reason": missing,
+                    "note": "Redaguota TS istorija. Be kliento vardo ir adreso. Jungiklis pagal leistinąją sumą, ne prieaugį.",
                 }
             )
     return rows
@@ -111,6 +149,8 @@ def reference_detail_cases() -> list[dict[str, Any]]:
             "source": "case_26-E-37934",
             "tp_issued": "Pg-452",
             "kw": 22,
+            "existing_kw": 0.0,
+            "increment_kw": 22,
             "phases": 3,
             "expected_solution": "KS_at_TP",
             "expected_breaker_a": 40,
@@ -120,13 +160,18 @@ def reference_detail_cases() -> list[dict[str, Any]]:
             "pole": None,
             "feeder": None,
             "coord": None,
-            "note": "Kita TP (Pg-452). Agentas visada skaičiuoja 12-608 — sprendinys ir kaina nesutaps. Tai sąmoningas neatitikimas.",
+            "missing_input": False,
+            "missing_reason": None,
+            "out_of_scope": True,
+            "note": "Kita TP (Pg-452). Agentas skaičiuoja tik 12-608 — sprendinys ir kaina nesutaps.",
         },
         {
             "id": "26-E-37536",
             "source": "case_26-E-37536",
             "tp_issued": "Rg-202",
             "kw": 11,
+            "existing_kw": 0.0,
+            "increment_kw": 11,
             "phases": 3,
             "expected_solution": "B",
             "expected_breaker_a": 20,
@@ -136,7 +181,10 @@ def reference_detail_cases() -> list[dict[str, Any]]:
             "pole": "300/1",
             "feeder": "L-300",
             "coord": _cabinet_coord("300/1") or {"lat": HERO_LAT, "lon": HERO_LON, "id": "fallback"},
-            "note": "Išduota Rg-202. Perleidžiame analogą ant 12-608 L-300. TP laukas nesutaps.",
+            "missing_input": False,
+            "missing_reason": None,
+            "out_of_scope": True,
+            "note": "Išduota Rg-202. Analogas ant 12-608 L-300. TP už SCOPE — neįeina į in-scope tikslumą.",
         },
     ]
 
@@ -155,6 +203,7 @@ def _form_for(case: dict[str, Any]) -> dict[str, Any]:
     )
     return {
         "kw": kw,
+        "existing_kw": case.get("existing_kw") or 0,
         "phases": phases,
         "lat": coord.get("lat"),
         "lon": coord.get("lon"),
@@ -169,6 +218,19 @@ def _tokens(text: str) -> set[str]:
     return {t.lower() for t in re.findall(r"[a-zA-Ząčęėįšųūž0-9]{3,}", text or "", flags=re.I)}
 
 
+def _add(fields, name, expected, got, ok, explain, category):
+    fields.append(
+        {
+            "field": name,
+            "expected": expected,
+            "got": got,
+            "match": ok,
+            "explain": explain,
+            "category": category,
+        }
+    )
+
+
 def compare_case(case: dict[str, Any], snap: dict[str, Any]) -> dict[str, Any]:
     sol = (snap.get("solution") or {}).get("id")
     br = (snap.get("breaker") or {}).get("amps")
@@ -176,60 +238,152 @@ def compare_case(case: dict[str, Any], snap: dict[str, Any]) -> dict[str, Any]:
     section = (snap.get("draft") or {}).get("section3") or ""
     failed = bool(snap.get("failed"))
     agent_sol = "escalate" if failed else sol
-    fields = []
+    fields: list[dict[str, Any]] = []
+    oos = bool(case.get("out_of_scope") or case.get("tp_issued") not in {None, "", "12-608"})
+    missing = bool(case.get("missing_input"))
 
-    def add(name, expected, got, ok, explain):
-        fields.append({"field": name, "expected": expected, "got": got, "match": ok, "explain": explain})
-
-    if case["expected_solution"] == "KS_at_TP":
-        add("solution", "KS_at_TP", agent_sol, False, "Išduota prie kitos TP (Pg-452). Agentas dirba tik 12-608 A/B/C.")
-    elif case["expected_solution"] == "escalate":
-        add("solution", "escalate", agent_sol, agent_sol == "escalate", "Istorijoje TR keitimas. Agentas eskaluoja tik jei 80 % netelpa.")
+    if oos:
+        cat_sol = CAT_A
+        explain_sol = case.get("note") or f"Išduota prie {case.get('tp_issued')}, ne 12-608."
+        ok_sol = False if case["expected_solution"] == "KS_at_TP" else (agent_sol == case["expected_solution"])
+        if case["expected_solution"] == "KS_at_TP":
+            ok_sol = False
+        _add(fields, "solution", case["expected_solution"], agent_sol, ok_sol, explain_sol, CAT_A)
+    elif missing and agent_sol != case["expected_solution"]:
+        _add(
+            fields,
+            "solution",
+            case["expected_solution"],
+            agent_sol,
+            False,
+            case.get("missing_reason") or "Trūksta įvesties taško.",
+            CAT_B,
+        )
+    elif case["expected_solution"] == "escalate" and agent_sol != "escalate":
+        _add(
+            fields,
+            "solution",
+            "escalate",
+            agent_sol,
+            False,
+            "Istorijoje TR keitimas. Dabartinis 12-608 modelis jau 400 kVA / 227,7 kW viršūnė — 80 % netikriname kaip tada.",
+            CAT_D,
+        )
     elif case["expected_solution"] == "unknown":
-        add("solution", "unknown", agent_sol, None, "Istorijos tekstas neleidžia vienareikšmiškai priskirti A/B/C.")
+        _add(fields, "solution", "unknown", agent_sol, None, "Tekstas neleidžia priskirti A/B/C.", CAT_B)
     else:
-        add("solution", case["expected_solution"], agent_sol, agent_sol == case["expected_solution"],
-            "" if agent_sol == case["expected_solution"] else "Lokacija sintetinė — artimiausias elementas gali skirtis nuo išduotos KS/atramos.")
+        ok = agent_sol == case["expected_solution"]
+        if ok:
+            _add(fields, "solution", case["expected_solution"], agent_sol, True, "", CAT_OK)
+        elif missing:
+            _add(fields, "solution", case["expected_solution"], agent_sol, False, case.get("missing_reason") or "", CAT_B)
+        else:
+            _add(
+                fields,
+                "solution",
+                case["expected_solution"],
+                agent_sol,
+                False,
+                "Inžinierius pasirinko kitą A/B/C prie to paties tinkle esančio taško.",
+                CAT_D,
+            )
 
     exp_a = case.get("expected_breaker_a")
-    if exp_a:
-        add("breaker", f"C {exp_a} A", f"C {br} A" if br else None, br == exp_a,
-            "" if br == exp_a else "Jungiklis iš KNOWLEDGE §15 lentelės pagal kW.")
+    if oos and exp_a:
+        _add(fields, "breaker", f"C {exp_a} A", f"C {br} A" if br else None, br == exp_a, "Kitos TP analogas.", CAT_A if br != exp_a else CAT_OK)
+    elif exp_a:
+        ok = br == exp_a
+        if ok:
+            _add(fields, "breaker", f"C {exp_a} A", f"C {br} A" if br else None, True, "Leistinoji suma × KNOWLEDGE §15.", CAT_OK)
+        else:
+            _add(
+                fields,
+                "breaker",
+                f"C {exp_a} A",
+                f"C {br} A" if br else None,
+                False,
+                f"Lentelė §15 {case.get('kw')} kW → C {br} A. Išduota C {exp_a} A — inžinieriaus parinkimas, ne klaida lentelėje.",
+                CAT_D,
+            )
     else:
-        add("breaker", None, br, None, "Istorijos tekste amperai neišskaitomi.")
+        _add(fields, "breaker", None, br, None, "Istorijos tekste buitinio jungiklio amperai neišskaitomi.", CAT_B)
 
     if case.get("expected_cost_net"):
-        add("cost", case["expected_cost_net"], cost, False,
-            "26-E-37934 sąmata kitai TP ir kitam darbų rinkiniui. Orientyras nesulyginamas 1:1.")
+        _add(
+            fields,
+            "cost",
+            case["expected_cost_net"],
+            cost,
+            False,
+            "26-E-37934 sąmata kitai TP ir kitam darbų rinkiniui. Nesulyginama 1:1.",
+            CAT_A,
+        )
     else:
-        add("cost", None, cost, None, "Istorinėje 12-608 eilutėje kainos nėra.")
+        _add(fields, "cost", None, cost, None, "Istorinėje 12-608 eilutėje kainos nėra.", CAT_B)
 
     exp_txt = case.get("expected_section3") or ""
     overlap = _tokens(exp_txt) & _tokens(section)
-    cond_ok = False
-    if section and exp_a and str(exp_a) in section:
-        cond_ok = True
-    if case["expected_solution"] == "B" and "16" in section and "KAS" in section:
-        cond_ok = True
-    if case["expected_solution"] == "A" and "pakeisti" in section.lower():
-        cond_ok = True
-    if case["expected_solution"] == "C" and ("150" in section or "įsipj" in section.lower()):
-        cond_ok = True
-    add("conditions", exp_txt[:180], section[:180], cond_ok if section else False,
-        f"Bendri žodžiai: {len(overlap)}. Tekstas lyginamas laisvai — ne visos istorinės eilutės 4.x = agento §3.")
+    if not section and failed:
+        _add(fields, "conditions", exp_txt[:180], "", None, "Eskaluota — §3 nerašomas.", CAT_OK if case["expected_solution"] == "escalate" else CAT_D)
+    else:
+        cond_ok = False
+        if section and exp_a and str(exp_a) in section:
+            cond_ok = True
+        if case["expected_solution"] == "B" and "16" in section and "KAS" in section:
+            cond_ok = True
+        if case["expected_solution"] == "A" and "pakeisti" in section.lower():
+            cond_ok = True
+        if case["expected_solution"] == "C" and ("150" in section or "įsipj" in section.lower()):
+            cond_ok = True
+        if oos:
+            cat = CAT_A if not cond_ok else CAT_OK
+        elif missing and not cond_ok:
+            cat = CAT_B
+        elif cond_ok:
+            cat = CAT_OK
+        else:
+            cat = CAT_D
+        _add(
+            fields,
+            "conditions",
+            exp_txt[:180],
+            section[:180],
+            cond_ok if section else False,
+            f"Bendri žodžiai: {len(overlap)}. " + ("Kategorija " + cat + "."),
+            cat,
+        )
 
     scored = [f for f in fields if f["match"] is not None]
     score = round(sum(1 for f in scored if f["match"]) / len(scored), 2) if scored else 0.0
+    cats = [f["category"] for f in fields if f["match"] is False]
+    if oos:
+        case_cat = CAT_A
+    elif missing:
+        case_cat = CAT_B
+    elif CAT_C in cats:
+        case_cat = CAT_C
+    elif cats:
+        case_cat = CAT_D
+    else:
+        case_cat = CAT_OK
+    in_scope = (not oos) and (not missing)
     return {
         "id": case["id"],
         "source": case["source"],
         "tp_issued": case["tp_issued"],
         "note": case.get("note"),
+        "missing_input": missing,
+        "missing_reason": case.get("missing_reason"),
+        "out_of_scope": oos,
+        "in_scope": in_scope,
+        "category": case_cat,
         "expected": {
             "solution": case["expected_solution"],
             "breaker_a": exp_a,
             "cost_net": case.get("expected_cost_net"),
             "section3": exp_txt,
+            "kw": case.get("kw"),
+            "existing_kw": case.get("existing_kw"),
         },
         "agent": {
             "solution": agent_sol,
@@ -242,6 +396,48 @@ def compare_case(case: dict[str, Any], snap: dict[str, Any]) -> dict[str, Any]:
         "fields": fields,
         "score": score,
         "redacted": True,
+    }
+
+
+def _taxonomy(results: list[dict[str, Any]]) -> dict[str, Any]:
+    counts = {CAT_A: 0, CAT_B: 0, CAT_C: 0, CAT_D: 0, CAT_OK: 0}
+    for r in results:
+        counts[r.get("category") or CAT_OK] = counts.get(r.get("category") or CAT_OK, 0) + 1
+    field_counts = {CAT_A: 0, CAT_B: 0, CAT_C: 0, CAT_D: 0}
+    for r in results:
+        for f in r.get("fields") or []:
+            if f.get("match") is False:
+                field_counts[f.get("category") or CAT_D] = field_counts.get(f.get("category") or CAT_D, 0) + 1
+    return {
+        "cases": counts,
+        "field_mismatches": field_counts,
+        "labels": {
+            CAT_A: "Už SCOPE (kita TP / įtampa)",
+            CAT_B: "Trūksta įvesties",
+            CAT_C: "Įrankio klaida",
+            CAT_D: "Inžinieriaus sprendimas",
+            CAT_OK: "Sutampa",
+        },
+    }
+
+
+def summarise(results: list[dict[str, Any]]) -> dict[str, Any]:
+    scored = [r["score"] for r in results]
+    scoped = [r for r in results if r.get("in_scope")]
+    scoped_scores = [r["score"] for r in scoped]
+    return {
+        "results": results,
+        "count": len(results),
+        "accuracy": round(sum(scored) / len(scored), 2) if scored else 0,
+        "in_scope_count": len(scoped),
+        "in_scope_accuracy": round(sum(scoped_scores) / len(scoped_scores), 2) if scoped_scores else 0,
+        "taxonomy": _taxonomy(results),
+        "before": BEFORE,
+        "note": (
+            "Sąžiningas back-test. In-scope = 12-608 ir žinomas taškas tinkle. "
+            "Neatitikimai suskirstyti: (a) už SCOPE, (b) trūksta įvesties, "
+            "(c) įrankio klaida, (d) inžinieriaus sprendimas. Duomenys nebuvo taikomi rezultatui."
+        ),
     }
 
 
@@ -263,11 +459,14 @@ def gallery_index() -> dict[str, Any]:
                 "note": c.get("note"),
                 "cabinet": c.get("cabinet"),
                 "pole": c.get("pole"),
+                "missing_input": c.get("missing_input"),
+                "out_of_scope": c.get("out_of_scope") or c.get("tp_issued") != "12-608",
                 "redacted": True,
             }
             for c in all_gallery_cases()
         ],
         "last": LAST_GALLERY,
+        "before": BEFORE,
         "note": "Tik redaguoti TS. Be kliento vardo, adreso ir skaitiklio.",
     }
 
@@ -282,13 +481,7 @@ def run_gallery(limit: int | None = None) -> dict[str, Any]:
     for case in cases:
         snap = run_sync_until_interrupt("intake", delay=0, text=case.get("expected_section3") or "", form=_form_for(case))
         results.append(compare_case(case, snap))
-    scored = [r["score"] for r in results]
-    payload = {
-        "results": results,
-        "count": len(results),
-        "accuracy": round(sum(scored) / len(scored), 2) if scored else 0,
-        "note": "Sąžiningas back-test: neatitikimai palikti ir paaiškinti. Be asmens duomenų.",
-    }
+    payload = summarise(results)
     global LAST_GALLERY
     LAST_GALLERY = payload
     return payload

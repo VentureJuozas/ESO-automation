@@ -22,8 +22,10 @@ from eso_agent.engine import (  # noqa: E402
     RUNS,
     batch_queue,
     batching,
+    hydrate_runs,
     list_runs,
     rerun_from,
+    reset_demo,
     resume,
     samples_public,
     scenarios_public,
@@ -38,6 +40,14 @@ from eso_agent.network import load_network  # noqa: E402
 from eso_agent.queue import queue_public, reset_queue  # noqa: E402
 
 app = FastAPI(title="ESO prijungimo sąlygos", version="0.1.0")
+
+
+@app.on_event("startup")
+def _startup():
+    hydrate_runs()
+    from eso_agent.queue import ensure_queue
+
+    ensure_queue()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,7 +76,13 @@ class RerunBody(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "llm_mode": llm_mode(), "batching": batching()}
+    return {
+        "ok": True,
+        "llm_mode": llm_mode(),
+        "batching": batching(),
+        "offline": True,
+        "persist": True,
+    }
 
 
 @app.get("/api/scenarios")
@@ -102,6 +118,11 @@ def queue_get():
 def queue_reset():
     reset_queue()
     return queue_public()
+
+
+@app.post("/api/demo/reset")
+def demo_reset():
+    return reset_demo()
 
 
 @app.post("/api/queue/batch")

@@ -19,11 +19,13 @@ from eso_agent.rules import (
     VOLTAGE_MIN_V,
     VOLTAGE_NOMINAL_V,
     breaker_table,
+    added_demand_kw,
     cable_mm2_for_solution,
     diversity_coefficient,
     issuing_deadline_days,
     select_solution,
     size_breaker as size_breaker_rule,
+    usable_voltage_baseline,
 )
 from eso_agent.ts_text import issue_dates, ownership_boundary, section3_blocks
 
@@ -236,7 +238,7 @@ def size_breaker(parsed: dict[str, Any]) -> dict[str, Any]:
 
 def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: dict[str, Any]) -> dict[str, Any]:
     feeder = location["outputs"]["feeder_record"]
-    new_kw = parsed["kw"]
+    new_kw = added_demand_kw(parsed["kw"], parsed.get("existing_kw") or 0)
     houses_feeder = feeder["points"] + 1
     k_feeder = diversity_coefficient(houses_feeder)
     k_station = diversity_coefficient(STATION["accounting_points"] + 1)
@@ -312,11 +314,17 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
         escalate = True
         reason = f"Transformatoriaus 90 % riba ({limit90} kW) viršyta."
     elif not fuse_ok:
-        escalate = True
-        reason = (
-            f"Linijos Isk {isk:.0f} A viršija saugiklį {fuse} A. "
-            "Reikia inžinieriaus / linijos stiprinimo (4 pakopa)."
-        )
+        if feeder.get("fuse_source") == "real":
+            escalate = True
+            reason = (
+                f"Linijos Isk {isk:.0f} A viršija saugiklį {fuse} A. "
+                "Reikia inžinieriaus / linijos stiprinimo (4 pakopa)."
+            )
+        else:
+            steps["1c_feeder"]["note"] = (
+                f"Isk {isk:.0f} A > sintetinis saugiklis {fuse} A. "
+                "Saugiklis byloje nėra — neblokuojame (tag: synthetic)."
+            )
     elif not cabinet_ok:
         escalate = True
         reason = "Spintos saugiklis mažesnis už naują jungiklį."
@@ -325,7 +333,13 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
         "tool": "check_capacity",
         "title": "Pajėgumas",
         "llm": False,
-        "inputs": {"kw": new_kw, "feeder": feeder["name"], "peak_kw": peak},
+        "inputs": {
+            "kw": parsed["kw"],
+            "existing_kw": parsed.get("existing_kw") or 0,
+            "added_kw": new_kw,
+            "feeder": feeder["name"],
+            "peak_kw": peak,
+        },
         "outputs": {
             "pass": not failed,
             "escalate": escalate,
@@ -418,7 +432,8 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
     length_m = max(5.0, location["outputs"]["element_to_station_m"])
     conductor = feeder["conductor"]
     houses = feeder["points"] + 1
-    permitted = feeder["permitted_kw"] + parsed["kw"]
+    added_kw = added_demand_kw(parsed["kw"], parsed.get("existing_kw") or 0)
+    permitted = feeder["permitted_kw"] + added_kw
     segments = [
         {
             "conductor": conductor,
@@ -434,16 +449,11 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
     )
     after = evaluate_line(segments, transformer_kva=400, method="new")
     delta_pp = after["voltage_drop_pct"] - before["voltage_drop_pct"]
-    baseline = feeder.get("voltage_min_v")
-    baseline_tag = feeder.get("voltage_source", "synthetic")
-    if baseline is None:
-        used_v = VOLTAGE_NOMINAL_V
-        used_tag = "synthetic"
-        baseline_note = feeder.get("voltage_note") or "Išmatuotos min. įtampos nėra — palyginimui 230 V nominalas."
-    else:
-        used_v = float(baseline)
-        used_tag = baseline_tag
-        baseline_note = feeder.get("voltage_note") or ""
+    baseline_info = usable_voltage_baseline(feeder)
+    baseline = baseline_info["raw"]
+    used_v = baseline_info["v"]
+    used_tag = baseline_info["tag"]
+    baseline_note = baseline_info["note"]
     v_after = used_v * (1 - after["voltage_drop_pct"] / 100.0)
     v_ok = v_after >= VOLTAGE_MIN_V
 
@@ -485,6 +495,7 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
             "conductor": conductor,
             "length_m": round(length_m, 1),
             "kw": parsed["kw"],
+            "added_kw": added_kw,
         },
         "outputs": {
             "pass": not escalate,
@@ -500,6 +511,7 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
             "baseline_v": baseline,
             "baseline_used_v": used_v,
             "baseline_tag": used_tag,
+            "filtered_event": baseline_info["filtered_event"],
             "voltage_after_v": round(v_after, 1),
             "limit_v": VOLTAGE_MIN_V,
             "rule_2c": {**rule_2c, "pass": rule_2c_pass, "new_cable_m": round(new_cable_m, 1)},
@@ -509,7 +521,7 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
                 "permitted_kw": after["permitted_kw"],
             },
             "profile": _voltage_profile(
-                feeder, parsed["kw"], location["outputs"]["element_id"], used_v
+                feeder, added_kw, location["outputs"]["element_id"], used_v
             ),
         },
         "source_tags": [feeder["conductor_source"], "inferred", "rule", used_tag],

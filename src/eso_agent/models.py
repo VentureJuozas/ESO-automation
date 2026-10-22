@@ -20,6 +20,7 @@ class RequestForm(BaseModel):
     lon: float | None = None
     customer_type: str = "household"
     pending_kw: float | None = None
+    existing_kw: float | None = None
     text: str = ""
     object_name: str = "Naujas buitinis objektas"
 
@@ -31,6 +32,7 @@ class ParsedRequest(BaseModel):
     lon: float
     customer_type: str = "household"
     pending_kw: float = 0.0
+    existing_kw: float = 0.0
     object_name: str = "Naujas buitinis objektas"
     first_time_connection: bool = True
     includes_generation: bool = False

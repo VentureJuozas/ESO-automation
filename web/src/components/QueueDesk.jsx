@@ -110,7 +110,7 @@ export default function QueueDesk({
             <p className="hint">Sintetinės, redaguotos bylos. SLA — 3 darbo dienos (KNOWLEDGE §5, buitinis ≤250 kW).</p>
           </div>
           <div className="desk-actions">
-            <button className="go" type="button" onClick={onReset} disabled={batching}>Atstatyti</button>
+            <button className="go" type="button" onClick={onReset} disabled={batching}>Atstatyti demo</button>
             <button className="exec" type="button" onClick={onBatch} disabled={batching || hud.new === 0}>
               {batching ? "Vykdoma…" : "Paleisti visas"}
             </button>

@@ -1,4 +1,6 @@
 data/substation_12-608/raw/
+data/*.sqlite
+*.sqlite
 
 
 demo/*

@@ -2,9 +2,11 @@
 
 An AI **orchestrator** (LangGraph) prepares 0.4 kV grid-connection technical conditions (prijungimo sąlygos) for a new household on substation **12-608**. Deterministic Python makes every engineering decision. The LLM only parses the request and phrases TS §3. An engineer always approves.
 
-The dashboard is an **n8n-style workflow canvas**: each tool is a node, edges animate as the run proceeds, and clicking a node opens an inspector (inputs, output, JSON, ESO rule link).
+The dashboard is an **n8n-style workflow canvas**: each tool is a node, edges animate as the run proceeds, and clicking a node opens an inspector (inputs, output, JSON, ESO rule link). The default screen is a **manager queue desk**.
 
-## One command
+## One command (fresh clone)
+
+Needs Python 3.11+ and Node 20+. **No API key. No network tiles required** (offline paper map if Esri/OSM fail).
 
 ```bash
 make demo
@@ -12,23 +14,39 @@ make demo
 
 Then open http://127.0.0.1:8000
 
-Needs Python 3.11+ and Node 20+. No API key required (`offline` / replay mode). If `OPENAI_API_KEY` is set, parse and §3 wording use the LLM.
+Same path as a script: `bash scripts/demo.sh`
+
+Docker (also one command, after Docker is installed):
+
+```bash
+docker compose up --build
+```
 
 ```bash
 make test          # pytest
 cd web && npm run dev   # UI with /api proxied to :8000
 ```
 
+Queue, runs and audit records persist in `data/demo.sqlite`. **Atstatyti demo** reseeds.
+
 ## 2-minute pitch
 
-1. Open **Vadovo eilė** (default). Twelve redacted cases mix A/B/C, fails and missing data. HUD shows processed, engineer minutes saved (assumption), and approval-queue depth. SLA clocks use the 3 working-day household rule.
-2. Click **Paleisti visas**. Rows flip new → running → awaiting / escalated. Open the inbox: approve, edit §3, or override with a reason (audited).
-3. Click a fail row (100 kW). The n8n canvas branches at `check_capacity`. The inspector shows the reinforcement brief (400→630 kVA, feeder split, new TP) with inferred cost ranges. Open the printable paketą.
-4. Open **Istorinė galerija**. Run the back-test. 26-E-37934 (Pg-452) and other mismatches stay visible with an explanation. Accuracy is honest.
-5. From any case, open the immutable **Auditas** (JSON + HTML, SHA-256).
-6. Hero still works: scenario **Hero** → Paleisti eigą → 200/3 → B → 20 A → approve → A4 TS.
+See [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) for the 4–5 minute jury walkthrough.
 
-**Rankinis vs Agentas** compares recorded replay timings with assumed desk minutes (not ESO statistics) and extrapolates 40 cases/month.
+1. Open **Vadovo eilė**. Twelve redacted cases. **Paleisti visas**. Inbox: approve / edit §3 / override.
+2. Fail row → reinforcement brief (400→630 kVA).
+3. **Istorinė galerija** → back-test. In-scope accuracy and taxonomy. 26-E-37934 stays a mismatch (Pg-452).
+4. **Auditas** JSON + HTML, SHA-256.
+5. Hero: 11 kW → 200/3 → B → 20 A → A4 TS.
+
+## Back-test (honest)
+
+| | Overall (16) | In-scope (12-608 + known point) | Tool errors |
+|---|---|---|---|
+| Round 3 (before) | 51 % | not separated | hidden in the 51 % |
+| Round 4 (after) | **84 %** | **95 %** | **0** |
+
+Fixes were in the tools, not in the history CSV: size breaker on total permitted kW, add only the increment to the transformer peak, filter a 205 V event, do not block on a synthetic fuse, do not parse L-206 as 206 A. Documented in [docs/BACKTEST.md](docs/BACKTEST.md).
 
 ## What is real vs synthetic
 
@@ -43,12 +61,12 @@ Customer names, addresses and meter serials are not in the demo. Raw CSVs stay g
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md). Scope is fixed in [data/SCOPE.md](data/SCOPE.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md), [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md). Scope is fixed in [data/SCOPE.md](data/SCOPE.md).
 
 ```
-web/          React + Vite dashboard (n8n canvas)
-app/          FastAPI (SSE + TS HTML)
-src/eso_agent tools, LangGraph, engine
+web/          React + Vite dashboard (n8n canvas + manager desk)
+app/          FastAPI (SSE + TS/audit/brief HTML)
+src/eso_agent tools, LangGraph, engine, SQLite store
 src/line_load.py   ESO calculator (voltage drop / diversity)
-tests/        breaker, locate, A/B/C, hero E2E, fail case, queue batch, gallery, audit
+tests/        hero, fail, queue, gallery taxonomy, persist
 ```

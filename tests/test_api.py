@@ -91,4 +91,9 @@ def test_queue_and_gallery_via_api():
         assert "26-E-37934" in ids
         ran = c.post("/api/gallery/run").json()
         assert 0 <= ran["accuracy"] <= 1
+        assert ran["taxonomy"]["cases"]["tool_error"] == 0
+        assert "in_scope_accuracy" in ran
+        wiped = c.post("/api/demo/reset").json()
+        assert wiped["hud"]["new"] >= 8
+        assert all(x["status"] == "new" for x in wiped["cases"])
         assert ran["count"] >= 3

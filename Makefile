@@ -2,7 +2,10 @@ PYTHON ?= python3
 export PYTHONPATH := src:.
 export ESO_STEP_DELAY ?= 0.11
 
-.PHONY: install demo test web web-build
+.PHONY: install demo test web web-build docker
+
+docker:
+	docker compose up --build
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt

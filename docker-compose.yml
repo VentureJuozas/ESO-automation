@@ -1,0 +1,12 @@
+services:
+  eso:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ESO_STEP_DELAY: "0.12"
+      ESO_DB: /app/data/demo.sqlite
+    volumes:
+      - eso-data:/app/data
+volumes:
+  eso-data:

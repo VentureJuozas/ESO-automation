@@ -176,6 +176,45 @@ def cable_mm2_for_solution(solution_id: str) -> int | None:
     return None
 
 
+def added_demand_kw(total_kw: float, existing_kw: float | None = 0.0) -> float:
+    """kW added to the network. Existing load is already in the measured peak."""
+    return max(0.0, round(float(total_kw) - float(existing_kw or 0), 3))
+
+
+def usable_voltage_baseline(feeder: dict) -> dict:
+    """Skip a single below-limit event reading (same filter as L-200). Tag: rule."""
+    raw = feeder.get("voltage_min_v")
+    note = feeder.get("voltage_note") or ""
+    if raw is None:
+        return {
+            "v": VOLTAGE_NOMINAL_V,
+            "tag": "synthetic",
+            "raw": None,
+            "filtered_event": False,
+            "note": note or "Išmatuotos min. įtampos nėra — palyginimui 230 V nominalas.",
+        }
+    raw_f = float(raw)
+    if raw_f < VOLTAGE_MIN_V:
+        return {
+            "v": VOLTAGE_NOMINAL_V,
+            "tag": "synthetic",
+            "raw": raw_f,
+            "filtered_event": True,
+            "note": (
+                f"Išmatuota min. {raw_f} V jau žemiau {VOLTAGE_MIN_V:.0f} V. "
+                "Laikoma nefiltruotu įvykiu (kaip L-200 66–81 V), neblokuojame naujos buitinės paraiškos. "
+                "Skaičiuojame nuo 230 V."
+            ),
+        }
+    return {
+        "v": raw_f,
+        "tag": feeder.get("voltage_source") or "real",
+        "raw": raw_f,
+        "filtered_event": False,
+        "note": note,
+    }
+
+
 def issuing_deadline_days(kw: float, customer_type: str = "household") -> dict:
     if customer_type == "household" and kw <= HOUSEHOLD_DEADLINE_KW:
         return {
