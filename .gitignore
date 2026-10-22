@@ -1,0 +1,7 @@
+data/substation_12-608/raw/
+
+
+demo/
+__pycache__/
+*.pyc
+
