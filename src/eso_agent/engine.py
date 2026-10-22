@@ -30,6 +30,21 @@ from eso_agent.scenarios import all_scenarios, get_scenario
 PRE_CHECK = [n_parse, n_locate, n_solution, n_breaker]
 CHECKS = [n_capacity, n_quality, n_reliability, n_future]
 POST = [n_draft, n_cost, n_map]
+FN_TOOL = {
+    n_parse: "parse_request",
+    n_locate: "locate_connection_point",
+    n_solution: "select_solution",
+    n_breaker: "size_breaker",
+    n_capacity: "check_capacity",
+    n_quality: "check_voltage_drop",
+    n_reliability: "check_reliability",
+    n_future: "check_future",
+    n_draft: "draft_ts_section3",
+    n_cost: "estimate_cost",
+    n_map: "render_map",
+    n_escalate: "escalate",
+    n_issue: "issue_ts",
+}
 
 RUNS: dict[str, dict[str, Any]] = {}
 
@@ -41,13 +56,16 @@ def _delay() -> float:
 def _value(events: list[dict[str, Any]], started: float, status: str) -> dict[str, Any]:
     tags: dict[str, int] = {}
     rules = 0
+    elapsed_ms = 0
     for ev in events:
         if ev.get("type") != "tool":
             continue
         for t in ev.get("source_tags") or []:
             tags[t] = tags.get(t, 0) + 1
         rules += 1
-    elapsed_ms = int((time.time() - started) * 1000)
+        elapsed_ms += int(ev.get("elapsed_ms") or 0)
+    if elapsed_ms == 0:
+        elapsed_ms = int((time.time() - started) * 1000)
     lo, hi = MANUAL_TIME_ASSUMPTION_MINUTES
     return {
         "elapsed_ms": elapsed_ms,
@@ -133,6 +151,7 @@ def list_runs() -> list[dict[str, Any]]:
 
 
 async def _run_fn(run: dict[str, Any], fn) -> None:
+    await _broadcast(run, {"type": "start", "tool": FN_TOOL.get(fn, fn.__name__), "ts": time.time()})
     t0 = time.perf_counter()
     run["state"] = {**run["state"], **fn(run["state"])}
     elapsed = int((time.perf_counter() - t0) * 1000)

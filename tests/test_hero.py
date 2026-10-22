@@ -58,3 +58,10 @@ def test_hero_run_to_approval():
 
 def test_hero_breaker_from_table():
     assert size_breaker(11, 3)["amps"] == 20
+
+
+def test_value_elapsed_is_tool_sum_not_wall_clock():
+    snap = run_sync_until_interrupt("hero", delay=0)
+    total = sum(int(e.get("elapsed_ms") or 0) for e in snap["events"] if e.get("type") == "tool")
+    assert snap["value"]["elapsed_ms"] == total
+    assert snap["value"]["tools_run"] == 11

@@ -4,7 +4,9 @@ import { Icon } from "./icons.jsx";
 import WorkflowCanvas from "./components/WorkflowCanvas.jsx";
 import StepSheet from "./components/StepSheet.jsx";
 import HowItWorks from "./components/HowItWorks.jsx";
+import RuleSheet from "./components/RuleSheet.jsx";
 import SourceTags from "./components/SourceTags.jsx";
+import { scenarioStickies } from "./workflow.js";
 
 const EMPTY_FORM = { kw: 11, phases: 3, lat: 54.55929, lon: 25.27955, text: "", pending_kw: 0, object_name: "Naujas buitinis objektas" };
 
@@ -22,6 +24,7 @@ export default function App() {
   const [section3, setSection3] = useState("");
   const [error, setError] = useState("");
   const [open, setOpen] = useState({ paraiskos: true, istorija: true, kita: true });
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const stopRef = useRef(() => {});
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export default function App() {
   const status = snap?.status || "idle";
   const value = snap?.value;
   const selectedEvent = useMemo(
-    () => [...events].reverse().find((e) => e.tool === selected) || null,
+    () => [...events].reverse().find((e) => e.tool === selected && e.type !== "start") || null,
     [events, selected]
   );
 
@@ -44,6 +47,11 @@ export default function App() {
     const s3 = snap?.draft?.section3 || snap?.issued?.section3;
     if (s3 && !section3) setSection3(s3);
   }, [snap?.draft, snap?.issued]);
+
+  function pickNode(id) {
+    setSelected(id);
+    setInspectorOpen(true);
+  }
 
   function pickScenario(s) {
     setScenarioId(s.id);
@@ -53,6 +61,7 @@ export default function App() {
     setEvents([]);
     setSection3("");
     setSelected("parse_request");
+    setInspectorOpen(true);
     setError("");
   }
 
@@ -62,6 +71,7 @@ export default function App() {
     setSection3("");
     setRunningTool("parse_request");
     setSelected("parse_request");
+    setInspectorOpen(true);
     stopRef.current();
     try {
       const created = await postJSON("/api/runs", { scenario_id: scenarioId, text: form.text, form });
@@ -69,14 +79,19 @@ export default function App() {
       const close = connectEvents(
         created.id,
         (ev) => {
-          if (ev.type === "tool") {
-            setEvents((xs) => [...xs, ev]);
+          if (ev.type === "start") {
             setRunningTool(ev.tool);
+            setSelected(ev.tool);
+            setInspectorOpen(true);
+          } else if (ev.type === "tool") {
+            setEvents((xs) => [...xs, ev]);
+            setRunningTool(null);
             setSelected(ev.tool);
           } else if (ev.type === "interrupt") {
             setEvents((xs) => [...xs, ev]);
             setRunningTool(null);
             setSelected("engineer_approval");
+            setInspectorOpen(true);
           } else if (ev.type === "status" || ev.type === "done") {
             if (ev.snapshot) {
               setRun(ev.snapshot);
@@ -102,6 +117,8 @@ export default function App() {
 
   async function approve(force = false) {
     if (!run?.id) return;
+    setRunningTool("issue_ts");
+    setSelected("issue_ts");
     const snap2 = await postJSON(`/api/runs/${run.id}/resume`, {
       decision: "approve",
       section3,
@@ -109,6 +126,7 @@ export default function App() {
     });
     setRun(snap2);
     setEvents(snap2.events || events);
+    setRunningTool(null);
     setSelected("issue_ts");
     getJSON("/api/runs").then(setHistory).catch(() => {});
   }
@@ -122,16 +140,25 @@ export default function App() {
 
   async function rerun(fromTool) {
     if (!run?.id) return;
+    setRunningTool(fromTool);
     const snap2 = await postJSON(`/api/runs/${run.id}/rerun`, {
       from_tool: fromTool,
       overrides: { pending_kw: form.pending_kw, kw: form.kw, phases: form.phases, lat: form.lat, lon: form.lon },
     });
     setRun(snap2);
     setEvents(snap2.events || []);
+    setRunningTool(null);
   }
 
   const waiting = status === "awaiting_approval" || status === "escalated";
   const llmMode = architecture?.llm_mode || snap?.llm_mode || "offline";
+  const hud = runningTool
+    ? { cls: "run", text: `Vykdoma · ${runningTool}` }
+    : waiting
+      ? { cls: failed ? "bad" : "wait", text: failed ? "Sustabdyta · eskalacija" : "Sustabdyta · inžinieriaus vartai" }
+      : status === "issued"
+        ? { cls: "ok", text: "Išduota · TS paruošta spausdinti" }
+        : { cls: "", text: "Drobė · spustelėkite mazgą" };
 
   return (
     <div className="app">
@@ -157,7 +184,7 @@ export default function App() {
               Istorija <span className="count">{history.length}</span>
             </button>
             {open.istorija && history.map((h) => (
-              <button key={h.id} className="item" type="button" onClick={() => getJSON(`/api/runs/${h.id}`).then((r) => { setRun(r); setEvents(r.events || []); setView("case"); setSelected("parse_request"); })}>
+              <button key={h.id} className="item" type="button" onClick={() => getJSON(`/api/runs/${h.id}`).then((r) => { setRun(r); setEvents(r.events || []); setView("case"); setSelected("parse_request"); setInspectorOpen(true); })}>
                 <b>{h.id.slice(0, 6)} · {h.solution || "—"} {h.kw} kW</b>
                 <small>{h.status}</small>
               </button>
@@ -169,11 +196,11 @@ export default function App() {
             </button>
             {open.kita && (
               <>
-                <button className={`item${view === "how" ? " on" : ""}`} type="button" onClick={() => { setView("how"); setSelected("ui"); }}>
-                  <b>Kaip tai veikia</b><small>Architektūra ir taisyklės</small>
+                <button className={`item${view === "how" ? " on" : ""}`} type="button" onClick={() => { setView("how"); setSelected("ui"); setInspectorOpen(true); }}>
+                  <b>Kaip tai veikia</b><small>Architektūros drobė</small>
                 </button>
-                <button className={`item${view === "rules" ? " on" : ""}`} type="button" onClick={() => setView("rules")}>
-                  <b>Taisyklės</b><small>ESO šaltiniai prie įrankių</small>
+                <button className={`item${view === "rules" ? " on" : ""}`} type="button" onClick={() => { setView("rules"); setSelected("parse_request"); setInspectorOpen(true); }}>
+                  <b>Taisyklės</b><small>Mazgai ir ESO šaltiniai</small>
                 </button>
               </>
             )}
@@ -194,7 +221,7 @@ export default function App() {
                 {status === "issued" && run?.id && (
                   <a className="go" href={`/api/runs/${run.id}/ts.html`} target="_blank" rel="noreferrer">Atidaryti TS</a>
                 )}
-                <button className="exec" type="button" onClick={start} disabled={Boolean(runningTool)}>Paleisti eigą</button>
+                <button className="exec" type="button" onClick={start} disabled={status === "running" || Boolean(runningTool)}>Paleisti eigą</button>
               </>
             )}
           </div>
@@ -210,107 +237,112 @@ export default function App() {
           </div>
         )}
 
-        {view === "case" && (
-          <div className="request">
-            <div className="form">
-              <div><label>kW</label><input value={form.kw} onChange={(e) => setForm({ ...form, kw: Number(e.target.value) })} /></div>
-              <div>
-                <label>Fazės</label>
-                <select value={form.phases} onChange={(e) => setForm({ ...form, phases: Number(e.target.value) })}>
-                  <option value={1}>1F</option>
-                  <option value={3}>3F</option>
-                </select>
-              </div>
-              <div><label>Platuma</label><input value={form.lat} onChange={(e) => setForm({ ...form, lat: Number(e.target.value) })} /></div>
-              <div><label>Ilguma</label><input value={form.lon} onChange={(e) => setForm({ ...form, lon: Number(e.target.value) })} /></div>
-              <div className="full">
-                <label>Laisvas tekstas (LLM / replay skaitymui)</label>
-                <input value={form.text} placeholder={current?.form?.text} onChange={(e) => setForm({ ...form, text: e.target.value })} />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view === "case" && (
-          <div className="canvas" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-            <div className="workspace">
-              <div className="wf-wrap">
+        <div className="canvas" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <div className={`exec-hud ${hud.cls}`}>{hud.text}</div>
+          <div className="workspace">
+            <div className="wf-wrap">
+              {view === "case" && (
                 <WorkflowCanvas
                   events={events}
                   runningTool={runningTool}
                   failed={failed}
                   selectedId={selected}
-                  onSelect={setSelected}
+                  onSelect={pickNode}
+                  stickies={scenarioStickies(current)}
+                  inspectorOpen={inspectorOpen}
+                  followId={runningTool}
                 />
-              </div>
-              <div className="inspector">
-                <StepSheet
-                  toolId={selected}
-                  event={selectedEvent}
-                  running={runningTool === selected}
-                  error={error}
-                  catalog={architecture}
-                  onRerun={run?.id ? rerun : null}
-                  section3={section3}
-                  setSection3={setSection3}
-                  canEdit={waiting}
-                  emptyHint="Paleiskite eigą. Mazgai ant drobės užsidegs paeiliui kaip n8n."
+              )}
+              {view === "how" && (
+                <WorkflowCanvas
+                  mode="arch"
+                  selectedId={selected}
+                  onSelect={pickNode}
+                  architecture={architecture}
+                  inspectorOpen={inspectorOpen}
                 />
-              </div>
+              )}
+              {view === "rules" && (
+                <WorkflowCanvas
+                  events={[]}
+                  selectedId={selected}
+                  onSelect={pickNode}
+                  inspectorOpen={inspectorOpen}
+                  stickies={[{ id: "rules-note", x: 36, y: 516, title: "Taisyklės prie mazgų", body: "Spustelėkite mazgą — dešinėje n8n skydelyje ESO šaltinis, įvestis ir ką tikrinti inžinieriui." }]}
+                />
+              )}
             </div>
-            {waiting && (
-              <div className={`dock${failed ? " bad" : ""}`}>
-                <div>
-                  <b>{failed ? "Patikra nepraėjo — inžinieriui" : "Laukia inžinieriaus patvirtinimo"}</b>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                    {failed ? snap?.escalate?.reasons?.join(" ") : "Peržiūrėkite §3 dešiniame skydelyje, tada išduokite."}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className="go" type="button" onClick={saveEdit}>Įrašyti §3 pataisą</button>
-                  {failed ? (
-                    <button className="ink" type="button" onClick={() => approve(true)}>Išduoti vis tiek</button>
-                  ) : (
-                    <button className="exec" type="button" onClick={() => approve(false)}>Patvirtinti ir išduoti</button>
-                  )}
-                </div>
+            {inspectorOpen ? (
+              <div className="inspector">
+                {view === "case" && (
+                  <StepSheet
+                    toolId={selected}
+                    event={selectedEvent}
+                    running={runningTool === selected}
+                    error={error}
+                    catalog={architecture}
+                    onRerun={run?.id ? rerun : null}
+                    section3={section3}
+                    setSection3={setSection3}
+                    canEdit={waiting}
+                    form={form}
+                    setForm={setForm}
+                    onClose={() => setInspectorOpen(false)}
+                    emptyHint="Paleiskite eigą. Mazgai ant drobės užsidegs paeiliui kaip n8n."
+                  />
+                )}
+                {view === "how" && (
+                  <section className="sheet">
+                    <header className="sheet-head">
+                      <div>
+                        <div className="sheet-kicker">{selected}</div>
+                        <h2>{(architecture?.layers || []).find((l) => l.id === selected)?.title || "Kaip tai veikia"}</h2>
+                      </div>
+                      <button type="button" className="insp-x" onClick={() => setInspectorOpen(false)} aria-label="Uždaryti">×</button>
+                    </header>
+                    <div className="sheet-body">
+                      <HowItWorks architecture={architecture} layerId={selected} />
+                    </div>
+                  </section>
+                )}
+                {view === "rules" && (
+                  <section className="sheet">
+                    <header className="sheet-head">
+                      <div>
+                        <div className="sheet-kicker">{selected}</div>
+                        <h2>{(architecture?.tools || []).find((t) => t.id === selected)?.title_lt || selected}</h2>
+                      </div>
+                      <button type="button" className="insp-x" onClick={() => setInspectorOpen(false)} aria-label="Uždaryti">×</button>
+                    </header>
+                    <div className="sheet-body">
+                      <RuleSheet toolId={selected} catalog={architecture} />
+                    </div>
+                  </section>
+                )}
               </div>
+            ) : (
+              <button type="button" className="insp-reopen" onClick={() => setInspectorOpen(true)}>Mazgas</button>
             )}
           </div>
-        )}
-
-        {view === "how" && (
-          <div className="canvas" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-            <div className="workspace">
-              <div className="wf-wrap">
-                <WorkflowCanvas mode="arch" selectedId={selected} onSelect={setSelected} architecture={architecture} />
+          {view === "case" && waiting && (
+            <div className={`dock${failed ? " bad" : ""}`}>
+              <div>
+                <b>{failed ? "Patikra nepraėjo — inžinieriui" : "Laukia inžinieriaus patvirtinimo"}</b>
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                  {failed ? snap?.escalate?.reasons?.join(" ") : "Peržiūrėkite §3 dešiniame skydelyje, tada išduokite."}
+                </div>
               </div>
-              <div className="inspector">
-                <HowItWorks architecture={architecture} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="go" type="button" onClick={saveEdit}>Įrašyti §3 pataisą</button>
+                {failed ? (
+                  <button className="ink" type="button" onClick={() => approve(true)}>Išduoti vis tiek</button>
+                ) : (
+                  <button className="exec" type="button" onClick={() => approve(false)}>Patvirtinti ir išduoti</button>
+                )}
               </div>
             </div>
-          </div>
-        )}
-
-        {view === "rules" && (
-          <div className="how">
-            <div className="how-card">
-              <h2 style={{ marginTop: 0 }}>Taisyklės ir šaltiniai</h2>
-              <table className="steps-table">
-                <thead><tr><th>Įrankis</th><th>Inžinieriui</th><th>Šaltinis</th></tr></thead>
-                <tbody>
-                  {(architecture?.tools || []).map((t) => (
-                    <tr key={t.id}>
-                      <td><b>{t.title}</b></td>
-                      <td>{t.engineer}</td>
-                      <td>{t.rule_ref ? <a href={t.rule_ref.url} target="_blank" rel="noreferrer">{t.rule_ref.label} ↗</a> : t.rule}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </section>
     </div>
   );

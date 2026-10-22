@@ -23,7 +23,7 @@ export function connectEvents(runId, onEvent, onError) {
       onError?.(err);
     }
   };
-  ["tool", "interrupt", "status", "done", "error", "message"].forEach((t) => {
+  ["start", "tool", "interrupt", "status", "done", "error", "message"].forEach((t) => {
     es.addEventListener(t, handle);
   });
   es.onerror = () => onError?.(new Error("SSE"));

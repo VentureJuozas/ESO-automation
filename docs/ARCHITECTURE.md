@@ -26,7 +26,7 @@ flowchart TD
 
 | Layer | Role |
 |---|---|
-| Dashboard | Lithuanian n8n canvas: node cards, animated edges, right inspector |
+| Dashboard | Lithuanian n8n canvas: node cards with ports, pan/zoom, flowing edges, overlay inspector |
 | FastAPI | REST + SSE tool-call events, printable TS HTML |
 | LangGraph | Ordered nodes, interrupt at approval |
 | Tools | Breaker, locate, A/B/C, four checks, cost, map |
