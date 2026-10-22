@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prijungimo sąlygos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --ink: #1c1c1f;
+    --muted: #6f6f78;
+    --line: #e6e6ea;
+    --canvas: #f3f3f5;
+    --dot: #dddde2;
+    --coral: #ff6d5a;
+    --ok: #1f9d61;
+    --bad: #e11d48;
+    --warn: #d97706;
+    --card: #fff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: Inter, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  #app { height: 100%; display: flex; min-height: 0; }
+
+  .side {
+    width: 272px;
+    flex: none;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 16px 12px;
+  }
+  .mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--ink);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .mark svg { width: 16px; height: 16px; }
+  .brand b { display: block; font-size: 14px; letter-spacing: -0.2px; }
+  .brand small { color: var(--muted); font-size: 12px; }
+  .nav { padding: 8px; overflow: auto; }
+  .sec-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    background: transparent;
+    padding: 8px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: left;
+  }
+  .sec-btn:hover { background: #f6f6f7; }
+  .sec-btn .chev { width: 16px; height: 16px; color: var(--muted); transition: transform .15s ease; }
+  .sec-btn.open .chev { transform: rotate(90deg); }
+  .sec-btn .count {
+    margin-left: auto;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 12px;
+  }
+  .items { display: none; padding: 2px 0 8px; }
+  .sec.open .items { display: block; }
+  .item {
+    width: 100%;
+    display: block;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    border-radius: 8px;
+    padding: 8px 10px 8px 32px;
+  }
+  .item:hover { background: #f6f6f7; }
+  .item.on { background: #f3f3f5; }
+  .item b { display: block; font-weight: 600; font-size: 13px; }
+  .item small { color: var(--muted); font-size: 12px; }
+  .side-note {
+    margin-top: auto;
+    padding: 14px 16px 16px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--canvas); }
+  .top {
+    height: 56px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 20px;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+  }
+  .crumb { font-weight: 600; letter-spacing: -0.2px; min-width: 0; }
+  .top-actions { flex: none; }
+  .crumb span { color: var(--muted); font-weight: 500; margin: 0 6px; }
+  .top-actions { display: flex; align-items: center; gap: 10px; }
+  a.link {
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 7px 10px;
+    border-radius: 8px;
+  }
+  a.link:hover { background: #f3f3f5; }
+  .exec, .go, .ink {
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .exec { background: var(--coral); color: #fff; }
+  .exec:hover { filter: brightness(0.96); }
+  .go { background: #fff; border: 1px solid var(--line); }
+  .go:hover { background: #fafafa; }
+  .ink { background: var(--ink); color: #fff; }
+
+  .canvas {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--canvas);
+    background-image: radial-gradient(var(--dot) 1.1px, transparent 1.1px);
+    background-size: 18px 18px;
+  }
+  .stage {
+    flex: 1;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 20px;
+    overflow: auto;
+  }
+  .flow { display: flex; align-items: flex-start; }
+  .node { width: 132px; background: transparent; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+  .node.on .box { border-color: var(--ink); box-shadow: 0 0 0 4px rgba(28, 28, 31, .1); }
+  .box {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    background: var(--card);
+    border: 1.5px solid #e4e4e8;
+    display: grid;
+    place-items: center;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(24, 24, 27, .04), 0 8px 20px rgba(24, 24, 27, .04);
+    color: var(--hue, var(--ink));
+  }
+  .node:hover .box { transform: translateY(-1px); }
+  .box svg { width: 26px; height: 26px; }
+  .box.done { border: 2px solid var(--ok); }
+  .box.partial { border: 2px solid var(--warn); }
+  .box.stop { border: 2px solid var(--bad); }
+  .box.wait { border: 1.5px solid #e4e4e8; }
+  .box.dashed { border-style: dashed; color: var(--muted); }
+  .pip {
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    display: grid;
+    place-items: center;
+  }
+  .pip.done { border: 2px solid var(--ok); color: var(--ok); }
+  .pip.stop { border: 2px solid var(--bad); color: var(--bad); }
+  .pip svg { width: 10px; height: 10px; }
+  .cap { margin-top: 10px; font-size: 13px; font-weight: 600; text-align: center; letter-spacing: -0.1px; }
+  .sub { margin-top: 2px; font-size: 11px; color: var(--muted); text-align: center; }
+  .sub.stop { color: var(--bad); font-weight: 600; }
+  .sub.done { color: var(--ok); font-weight: 600; }
+  .sub.partial { color: var(--warn); font-weight: 600; }
+  .wire {
+    width: 112px;
+    height: 2px;
+    background: #d9d9e0;
+    margin: 35px -30px 0;
+    border-radius: 2px;
+    flex: none;
+    position: relative;
+    z-index: 0;
+  }
+  .wire.done { background: var(--ok); }
+
+  .sheet {
+    margin: 0 16px 16px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(24, 24, 27, .06);
+    max-height: 52%;
+    overflow: auto;
+    padding: 16px 18px 18px;
+  }
+  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .kicker { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .sheet h2 { margin: 2px 0 0; font-size: 18px; letter-spacing: -0.3px; }
+  .sheet-actions { display: flex; gap: 8px; }
+  .inner { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; padding-bottom: 4px; }
+  .chip {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .chip.on { border-color: var(--ink); }
+  .chip .d { width: 7px; height: 7px; border-radius: 50%; background: #d4d4d8; flex: none; }
+  .chip.done .d { background: var(--ok); }
+  .chip.stop .d { background: var(--bad); }
+  .chip b { font-weight: 600; font-size: 13px; }
+  .params { max-width: 680px; }
+  .params p { margin: 0 0 8px; }
+  .src { color: var(--muted); font-size: 13px; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; }
+  label { display: block; font-size: 12px; font-weight: 600; margin: 12px 0 6px; }
+  input, select {
+    width: min(360px, 100%);
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+  }
+  input:focus, select:focus { outline: 2px solid rgba(255, 109, 90, .35); border-color: var(--coral); }
+  .result {
+    background: #f6f6f7;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 8px;
+  }
+  .draft { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); max-width: 720px; }
+  .draft h3 { margin: 14px 0 8px; font-size: 14px; }
+  .draft h3:first-child { margin-top: 0; }
+  .panel { background: #f6f6f7; border-radius: 10px; padding: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 7px 0; border-bottom: 1px solid var(--line); }
+  td:last-child { text-align: right; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; }
+  .hint { color: var(--muted); text-align: center; margin-top: 18px; font-size: 13px; }
+  .test-copy { max-width: 520px; color: var(--ink); }
+  .test-copy h2 { margin: 0 0 8px; font-size: 18px; }
+  .need {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px dashed #d4d4d8;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const state = {
+  fuse: "", conductor: "", length: "", pending: "", place: "",
+  approved: false, from: -1, stop: -1, passed: new Set(),
+  open: { paraiskos: true, testavimas: true },
+  view: "case",
+  test: "feeder",
+  entered: null,
+  inner: 0
+};
+
+const steps = [
+  {
+    title: "Paraiška gauta",
+    block: false,
+    html: () => `
+      <p><b>Įvestis.</b> 11 kW, trys fazės, buitinis vartotojas. Koordinatės <span class="mono">54,55929, 25,27955</span>.</p>
+      <p class="src">Šaltinis: paraiška.</p>
+      <div class="result"><b>Rezultatas.</b> Priimta į šią seką.</div>`
+  },
+  {
+    title: "Tinkamumas",
+    block: false,
+    html: () => `
+      <p><b>Įvestis.</b> Dokumentai ir sąlygų rengimo įmoka. Jų šiose bylose nėra.</p>
+      <p class="src">Šaltinis: demonstracijoje laikoma, kad paraiška pateikta tinkamai.</p>
+      <div class="result"><b>Rezultatas.</b> Laikoma tinkamai pateikta. Žingsnis praleidžiamas.</div>`
+  },
+  {
+    title: "Poreikis",
+    block: false,
+    html: () => `
+      <p><b>Įvestis.</b> Leistina naudoti galia 11 kW, 3 fazės, buitinis.</p>
+      <p class="src">Šaltinis: paraiška ir taisyklė. Iki 250 kW sąlygos išduodamos per 3 darbo dienas.</p>
+      <div class="result"><b>Rezultatas.</b> Terminas 3 darbo dienos.</div>`
+  },
+  {
+    title: "Prijungimo taškas",
+    block: false,
+    html: () => `
+      <p><b>Įvestis.</b> Paraiškos koordinatės ir TP 12-608 objektai.</p>
+      <p class="src">Šaltinis: objektų byla. Artimiausias taškas yra atrama, ne gatvės adresas.</p>
+      <div class="result"><b>Rezultatas.</b> Oro linija <span class="mono">L-200</span>, atrama <span class="mono">200/3</span>, 17 m nuo paraiškos ir 52 m nuo transformatorinės. Linijoje 47 taškai. <a href="topology_map.html">Atidaryti žemėlapį</a>.</div>`
+  },
+  {
+    title: "Pajėgumas",
+    block: () => state.fuse.trim() === "",
+    html: () => `
+      <p><b>Įvestis.</b> 11 kW ir išmatuota pastotės apkrova.</p>
+      <p class="src">Šaltinis: jungiklio lentelė (taisyklė) ir 15 min apkrova (išmatuota, viršūnė 227,7 kW).</p>
+      <label for="fuse">Linijos saugiklis, A</label>
+      <input id="fuse" inputmode="numeric" value="${esc(state.fuse)}" placeholder="neįvesta">
+      <div class="result"><b>Rezultatas.</b> Jungiklis trifazis C <span class="mono">20 A</span>. Transformatorius: 227,7 + 11 = <span class="mono">238,7 kW</span>, 60 % iš 400 kW. Riba 80 % yra 320 kW, atsarga yra.</div>
+      <p>${state.fuse.trim() === ""
+        ? "Linijos saugiklis neįvestas, todėl linijos išvados nėra."
+        : "Įrašytas saugiklis " + esc(state.fuse) + " A. Linijos nominalo byloje nėra, todėl palyginimas neatliekamas."}</p>`
+  },
+  {
+    title: "Kokybė",
+    block: () => state.conductor.trim() === "" || state.length.trim() === "",
+    html: () => `
+      <p><b>Įvestis.</b> Linijos L-200 skaitiklių mažiausia įtampa ir būsimas ruožų sąrašas.</p>
+      <p class="src">Šaltinis: įtampos byla. 25 skaitikliai. Visi įrašai yra 2026-02-04 įvykis arba 0 V, todėl atmetus juos patikimos įtampos nelieka.</p>
+      <label for="conductor">Laidininkas</label>
+      <input id="conductor" value="${esc(state.conductor)}" placeholder="pvz. 4A-50">
+      <label for="length">Ruožų ilgiai, m</label>
+      <input id="length" value="${esc(state.length)}" placeholder="pvz. 40 + 25">
+      <p>${state.conductor.trim() && state.length.trim()
+        ? "Įvesta: " + esc(state.conductor) + ", " + esc(state.length) + " m. Įtampos kritimas neskaičiuojamas: skaičiuoklė prie šio vaizdo neprijungta."
+        : "Įtampos kritimo pokytis tuščias, kol neįvesti laidininkas ir ruožų ilgiai."}</p>`
+  },
+  {
+    title: "Patikimumas",
+    block: false,
+    html: () => `
+      <p><b>Įvestis.</b> Vienas transformatorius, 400 kW, N-1 galia lygi nominalui. Linija L-200 yra oro linija.</p>
+      <p class="src">Šaltinis: pastotės byla ir objektų byla.</p>
+      <div class="result"><b>Rezultatas.</b> Rezervo nėra. Linija radiali, atsarginis kelias neprarandamas. Nauja spinta ant atramos kaimynų neatjungia. Kabelio įsipjovimas šioje linijoje netaikomas.</div>`
+  },
+  {
+    title: "Ateitis",
+    block: false,
+    html: () => `
+      <p><b>Įvestis.</b> Rezervuotos paraiškos. Tuščias laukas laikomas 0 kW ir eigos nestabdo.</p>
+      <p class="src">Šaltinis: rezervuotų paraiškų nėra. Atsarga skaičiuojama nuo išmatuotos viršūnės. Skaičių įveda inžinierius.</p>
+      <label for="pending">Rezervuotos paraiškos, kW</label>
+      <input id="pending" inputmode="decimal" value="${esc(state.pending)}" placeholder="tuščia = 0">
+      <div class="result"><b>Rezultatas.</b> Po šio prijungimo iki 320 kW lieka <span class="mono">${headroom()} kW</span>.</div>`
+  },
+  {
+    title: "Sprendinys",
+    block: () => state.place === "",
+    html: () => `
+      <p><b>Įvestis.</b> Artimiausia atrama 200/3 linijoje L-200 ir laisva vieta spintoje.</p>
+      <p class="src">Šaltinis: vieta iš objektų bylos. Laisvą vietą įveda inžinierius. Jungiklis 20 A iš lentelės.</p>
+      <label for="place">Laisva vieta esamoje spintoje</label>
+      <select id="place">
+        <option value="" ${state.place === "" ? "selected" : ""}>nepasirinkta</option>
+        <option value="taip" ${state.place === "taip" ? "selected" : ""}>taip, jungti į esamą</option>
+        <option value="ne" ${state.place === "ne" ? "selected" : ""}>ne, statyti naują šalia</option>
+      </select>
+      <div class="result">${state.place === "" ? "Be laisvos vietos sprendinys nepasirenkamas." : solutionText()}</div>`
+  },
+  {
+    title: "Juodraštis",
+    block: false,
+    html: () => draftReady()
+      ? draftHtml()
+      : `<p>Sąlygų tekstas, patikrų suvestinė ir kaina atsiranda čia, kai eiga prieina iki išdavimo.</p>`
+  },
+  {
+    title: "Patvirtinimas",
+    block: () => !state.approved,
+    html: () => `
+      <p><b>Įvestis.</b> Juodraštis.</p>
+      <p class="src">Šaltinis: inžinieriaus sprendimas.</p>
+      <div class="result">${state.approved ? "<b>Rezultatas.</b> Patvirtinta." : "Laukia patvirtinimo."}</div>
+      ${state.stop === 10 && !state.approved ? '<p><button class="ink" id="approve" type="button">Patvirtinti</button></p>' : ""}`
+  },
+  {
+    title: "Išdavimas",
+    block: () => !state.approved,
+    html: () => state.approved
+      ? `<div class="result"><b>Rezultatas.</b> Parengta <span class="mono">2026-10-22</span>. Galioja iki <span class="mono">2027-10-22</span>.</div>`
+      : `<p>Data ir vienų metų galiojimas atsiranda po patvirtinimo.</p>`
+  }
+];
+
+const groups = [
+  { title: "Paraiška", hue: "#ff6d5a", steps: [0, 1, 2], icon: "doc" },
+  { title: "Taškas", hue: "#3b82f6", steps: [3], icon: "pin" },
+  { title: "Patikros", hue: "#7c5cfc", steps: [4, 5, 6, 7], icon: "grid" },
+  { title: "Sprendinys", hue: "#d97706", steps: [8], icon: "branch" },
+  { title: "Išdavimas", hue: "#0f766e", steps: [9, 10, 11], icon: "send" }
+];
+
+const tests = [
+  { id: "feeder", title: "Linijos stiprinimas", need: "Reikia linijos saugiklio nominalo ir ruožų laidininkų.", note: "Ši automatizacija paleidžiama tik tada, kai paraiška nebetelpa į esamą liniją. Demonstracijoje ji dar neveikia." },
+  { id: "trafo", title: "Transformatoriaus keitimas", need: "Reikia naujos galios ir montavimo kainos.", note: "Atskira eiga, kai 0,4 kV atsargos nebeužtenka. Už šios demonstracijos ribų." },
+  { id: "gen", title: "Gamyba ir kaupimas", need: "Reikia generacijos galios, kaupiklio ir krypties.", note: "Vartojimo paraiška šios eigos nenaudoja. Už šios demonstracijos ribų." }
+];
+
+const ICONS = {
+  doc: '<path d="M7 3.5h7l4.5 4.5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4.5"/>',
+  pin: '<path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/>',
+  grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.4"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.4"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.4"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.4"/>',
+  branch: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h4a4 4 0 0 1 4 4v0M8 18h4a4 4 0 0 0 4-4"/>',
+  send: '<path d="M4 12l16-7-6 16-2.5-6.5L4 12z"/>'
+};
+
+function icon(name) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+}
+function check() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12.5l5 5L19 7"/></svg>';
+}
+function bang() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 7v7M12 17.5v.5"/></svg>';
+}
+
+function headroom() {
+  const extra = parseFloat(String(state.pending).replace(",", ".")) || 0;
+  return (320 - 238.7 - extra).toLocaleString("lt-LT", { maximumFractionDigits: 1 });
+}
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function solutionText() {
+  return state.place === "taip"
+    ? "Sprendinys: esamoje spintoje prie atramos 200/3 keisti jungiklį į trifazį C 20 A."
+    : "Sprendinys: nauja KAS prie atramos 200/3, trifazis C 20 A, kabelis 16 mm² nuo linijos laidų.";
+}
+function draftReady() {
+  return state.from >= 0 && (state.stop < 0 || state.stop >= 9) && state.place !== "";
+}
+function draftHtml() {
+  const ts = state.place === "taip"
+    ? "Esamoje komercinės apskaitos spintoje ant oro linijos L-200 atramos Nr. 200/3 iš transformatorinės 12-608 pakeisti esamą automatinį jungiklį į trifazį „C“ charakteristikos 20 A automatinį jungiklį."
+    : "Ant esamos 0,4 kV oro linijos L-200 iš transformatorinės 12-608 atramos Nr. 200/3 įrengti komercinės apskaitos spintą (KAS) su trifaziu „C“ charakteristikos 20 A automatiniu jungikliu. KAS prijungti nuo esamos oro linijos laidų įrengiant 16 mm² skerspjūvio kabelių liniją.";
+  const lines = [["Jungiklis 3F C 20 A, orientyras", "64,79"]];
+  let net = 64.79;
+  if (state.place === "ne") {
+    lines.push(["KS/KAS spinta, orientyras", "1 533,79"]);
+    lines.push(["Kabelis 16 mm²", "kaina nenurodyta"]);
+    net += 1533.79;
+  }
+  const labour = net * 0.1178;
+  const withLabour = net + labour;
+  const gross = withLabour * 1.21;
+  const eur = n => n.toLocaleString("lt-LT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  lines.push(["Kapitalizuotas darbas 11,78 %", eur(labour)]);
+  return `
+    <div class="draft">
+      <h3>Sąlygų juodraštis</h3>
+      <div class="panel"><p style="margin:0">${ts}</p></div>
+      <h3>Patikros</h3>
+      <div class="panel">
+        <p>Pajėgumas: jungiklis 20 A, transformatorius 238,7 kW iš 320 kW.</p>
+        <p>Kokybė: patikimos įtampos L-200 neliko. Kritimas ${state.conductor && state.length ? "įvestas, neskaičiuotas" : "neįvestas"}.</p>
+        <p>Patikimumas: vienas transformatorius, radiali oro linija.</p>
+        <p style="margin:0">Ateitis: rezervuota ${state.pending.trim() === "" ? "0" : esc(state.pending)} kW, atsarga ${headroom()} kW. ${solutionText()}</p>
+      </div>
+      <h3>Kaina</h3>
+      <table>
+        ${lines.map(l => `<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join("")}
+        <tr><td>Iš viso be PVM</td><td>${eur(withLabour)}</td></tr>
+        <tr><td>Iš viso su PVM 21 %</td><td>${eur(gross)}</td></tr>
+      </table>
+      <p class="src">Orientyras iš bylos 26-E-37934.${state.place === "ne" ? " 16 mm² kabelio kainos toje byloje nėra." : ""}</p>
+      ${state.approved ? '<p><b>Išdavimas.</b> Parengta <span class="mono">2026-10-22</span>. Galioja iki <span class="mono">2027-10-22</span>.</p>' : ""}
+    </div>`;
+}
+
+function statusOf(i) {
+  if (state.stop === i) return steps[i].title === "Patvirtinimas" ? ["Laukia", "stop"] : ["Trūksta", "stop"];
+  if (state.passed.has(i)) return ["Atlikta", "done"];
+  return ["Laukia", "wait"];
+}
+function groupStatus(g) {
+  if (g.steps.includes(state.stop)) return statusOf(state.stop);
+  if (g.steps.every(i => state.passed.has(i))) return ["Atlikta", "done"];
+  if (g.steps.some(i => state.passed.has(i))) return ["Dalinai", "partial"];
+  return ["Laukia", "wait"];
+}
+
+function nodeButton(title, sub, cls, hue, iconName, attrs, dashed) {
+  const pip = cls === "done" ? `<span class="pip done">${check()}</span>` : cls === "stop" ? `<span class="pip stop">${bang()}</span>` : "";
+  return `<button class="node${attrs.includes("entered") ? " on" : ""}" style="--hue:${hue}" ${attrs}>
+    <span class="box ${cls}${dashed ? " dashed" : ""}">${icon(iconName)}${pip}</span>
+    <span class="cap">${title}</span>
+    <span class="sub ${cls}">${sub}</span>
+  </button>`;
+}
+
+function flowHtml() {
+  return groups.map((g, i) => {
+    const [word, cls] = groupStatus(g);
+    const entered = state.entered === i ? " data-entered" : "";
+    const wire = i < groups.length - 1
+      ? `<div class="wire${groupStatus(g)[1] === "done" ? " done" : ""}"></div>`
+      : "";
+    return nodeButton(g.title, word, cls, g.hue, g.icon, `type="button" data-enter="${i}"${entered}`, false) + wire;
+  }).join("");
+}
+
+function sheetHtml() {
+  const g = groups[state.entered];
+  const chips = g.steps.map(i => {
+    const [, cls] = statusOf(i);
+    return `<button class="chip ${cls}${state.inner === i ? " on" : ""}" type="button" data-inner="${i}"><i class="d"></i><b>${steps[i].title}</b></button>`;
+  }).join("");
+  return `<div class="sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="kicker">Žingsnis ${state.entered + 1} iš ${groups.length}</div>
+        <h2>${g.title}</h2>
+      </div>
+      <div class="sheet-actions">
+        <button class="go" type="button" data-run="${state.inner}">Paleisti nuo čia</button>
+        <button class="go" type="button" data-close>Uždaryti</button>
+      </div>
+    </div>
+    <div class="inner">${chips}</div>
+    <div class="params">${steps[state.inner].html()}</div>
+  </div>`;
+}
+
+function caseView() {
+  const hint = state.entered == null ? `<p class="hint">Atidarykite žingsnį, kad pamatytumėte, kas į jį įeina.</p>` : "";
+  return `
+    <header class="top">
+      <div class="crumb">Paraiškos <span>/</span> Naujas vartotojas, TP 12-608</div>
+      <div class="top-actions">
+        <a class="link" href="topology_map.html">Žemėlapis</a>
+        <button class="exec" type="button" data-run="0">Paleisti eigą</button>
+      </div>
+    </header>
+    <div class="canvas">
+      <div class="stage"><div><div class="flow">${flowHtml()}</div>${hint}</div></div>
+      ${state.entered == null ? "" : sheetHtml()}
+    </div>`;
+}
+
+function testView() {
+  const t = tests.find(x => x.id === state.test) || tests[0];
+  return `
+    <header class="top">
+      <div class="crumb">Testavimas <span>/</span> ${t.title}</div>
+      <div class="top-actions"><a class="link" href="topology_map.html">Žemėlapis</a></div>
+    </header>
+    <div class="canvas">
+      <div class="stage">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          ${nodeButton(t.title, "Neveikia", "wait", "#6f6f78", "branch", 'type="button" tabindex="-1"', true)}
+          <div class="test-copy" style="margin-top:28px;text-align:center">
+            <h2>${t.title}</h2>
+            <p style="margin:0">${t.note}</p>
+            <div class="need">${t.need}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function sideHtml() {
+  const sec = (id, label, count, body) => `
+    <div class="sec${state.open[id] ? " open" : ""}">
+      <button class="sec-btn${state.open[id] ? " open" : ""}" type="button" data-section="${id}">
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        ${label}<span class="count">${count}</span>
+      </button>
+      <div class="items">${body}</div>
+    </div>`;
+  const app = `<button class="item${state.view === "case" ? " on" : ""}" type="button" data-view="case"><b>Naujas vartotojas, TP 12-608</b><small>11 kW, 3 fazės, buitinis</small></button>`;
+  const testsHtml = tests.map(t => `<button class="item${state.view === "test" && state.test === t.id ? " on" : ""}" type="button" data-test="${t.id}"><b>${t.title}</b><small>Neveikia</small></button>`).join("");
+  return `
+    <div class="brand"><span class="mark">${icon("branch")}</span><div><b>Sąlygos</b><small>Prijungimo eiga</small></div></div>
+    <nav class="nav">
+      ${sec("paraiskos", "Paraiškos", "1", app)}
+      ${sec("testavimas", "Testavimas", String(tests.length), testsHtml)}
+    </nav>
+    <p class="side-note">Skaičiai iš TP 12-608. Kainos yra orientyras iš 26-E-37934. Linijos skaičiuoklė neprijungta.</p>`;
+}
+
+function render() {
+  const active = document.activeElement;
+  const keep = active && active.id ? active.id : "";
+  const caret = keep && active.selectionStart != null ? [active.selectionStart, active.selectionEnd] : null;
+  document.getElementById("app").innerHTML = `<aside class="side">${sideHtml()}</aside><section class="main">${state.view === "case" ? caseView() : testView()}</section>`;
+  if (!keep) return;
+  const el = document.getElementById(keep);
+  if (!el) return;
+  el.focus();
+  if (caret && el.setSelectionRange) el.setSelectionRange(caret[0], caret[1]);
+}
+
+function readInputs() {
+  const fuse = document.getElementById("fuse");
+  const conductor = document.getElementById("conductor");
+  const length = document.getElementById("length");
+  const pending = document.getElementById("pending");
+  const place = document.getElementById("place");
+  if (fuse) state.fuse = fuse.value;
+  if (conductor) state.conductor = conductor.value;
+  if (length) state.length = length.value;
+  if (pending) state.pending = pending.value;
+  if (place) state.place = place.value;
+}
+
+function focusStep(i) {
+  state.view = "case";
+  state.entered = groups.findIndex(g => g.steps.includes(i));
+  state.inner = i;
+}
+
+function runFrom(i) {
+  readInputs();
+  state.from = i;
+  state.stop = -1;
+  for (let k = i; k < steps.length; k++) {
+    if (steps[k].block && steps[k].block()) { state.stop = k; break; }
+    state.passed.add(k);
+  }
+  focusStep(state.stop < 0 ? 9 : state.stop);
+  render();
+}
+
+document.getElementById("app").addEventListener("click", e => {
+  if (e.target.closest("input, select, label, a")) return;
+  const run = e.target.closest("[data-run]");
+  if (run) { runFrom(+run.dataset.run); return; }
+  if (e.target.closest("#approve")) { state.approved = true; runFrom(10); return; }
+  readInputs();
+  const section = e.target.closest("[data-section]");
+  if (section) { state.open[section.dataset.section] = !state.open[section.dataset.section]; render(); return; }
+  if (e.target.closest("[data-view]")) { state.view = "case"; render(); return; }
+  const test = e.target.closest("[data-test]");
+  if (test) { state.view = "test"; state.test = test.dataset.test; render(); return; }
+  const enter = e.target.closest("[data-enter]");
+  if (enter) {
+    const gi = +enter.dataset.enter;
+    state.entered = gi;
+    const ids = groups[gi].steps;
+    state.inner = ids.includes(state.stop) ? state.stop : (ids.find(i => !state.passed.has(i)) ?? ids[0]);
+    render();
+    return;
+  }
+  const inner = e.target.closest("[data-inner]");
+  if (inner) { state.inner = +inner.dataset.inner; render(); return; }
+  if (e.target.closest("[data-close]")) { state.entered = null; render(); }
+});
+
+document.getElementById("app").addEventListener("input", e => {
+  if (!e.target.matches("input")) return;
+  readInputs();
+  render();
+});
+document.getElementById("app").addEventListener("change", e => {
+  if (!e.target.matches("select")) return;
+  readInputs();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
