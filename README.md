@@ -25,10 +25,11 @@ cd web && npm run dev   # UI with /api proxied to :8000
 2. Click **Paleisti eigą**. Watch nodes light up: parse → locate L-200 / 200/3 → solution B → 20 A breaker → four checks → draft → cost → map → approval gate.
 3. Open **Pajėgumas** (transformer bar 227.7 → 238.7 kW vs 80/90 %), **Kokybė** (voltage profile), **Sprendinys** (A/B/C cards).
 4. Click **Patvirtinti ir išduoti**. Open the printable TS.
-5. Switch to **Kaip tai veikia** for the same canvas showing frontend → API → LangGraph → tools → data, and the next-steps roadmap.
-6. Optionally run **Sprendinys A**, **C**, and **Nepraeina** to show the other branches.
+5. Open the official A4 TS (print / PDF). Customer fields are redacted placeholders.
+6. Switch to **Kaip tai veikia** for the same canvas showing frontend → API → LangGraph → tools → data.
+7. Optionally run **Nauja paraiška** (paste a Lithuanian sample) or **Nepraeina** — the fail path branches at `check_capacity`, greys skipped nodes, and needs an audited engineer override.
 
-Value strip: agent seconds vs **assumed** 2–4 hours of manual work (not ESO statistics).
+**Rankinis vs Agentas** compares recorded replay timings with assumed desk minutes (not ESO statistics) and extrapolates 40 cases/month.
 
 ## What is real vs synthetic
 
