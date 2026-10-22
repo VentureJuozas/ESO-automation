@@ -44,7 +44,11 @@ function edgeActive(from, to, events, runningTool, failed, skipped = []) {
 }
 
 function lastEvent(id, events) {
-  return [...events].reverse().find((e) => e.tool === id && e.type !== "start") || null;
+  return (
+    [...events].reverse().find((e) => e.tool === id && e.type === "tool")
+    || [...events].reverse().find((e) => e.tool === id && e.type !== "start")
+    || null
+  );
 }
 
 export default function WorkflowCanvas({
