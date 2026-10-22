@@ -61,3 +61,34 @@ def test_fail_override_requires_reason_via_api():
         assert ok.json()["overridden"] is True
         assert ok.json()["status"] == "awaiting_approval"
         assert ok.json()["audit"][0]["action"] == "engineer_override"
+        brief = c.get(f"/api/runs/{rid}/brief.html")
+        assert brief.status_code == 200
+        assert "630" in brief.text
+        audit = c.get(f"/api/runs/{rid}/audit.json").json()
+        assert audit["sha256"]
+        assert audit["tools"]
+        html = c.get(f"/api/runs/{rid}/audit.html")
+        assert html.status_code == 200
+        assert audit["sha256"] in html.text
+
+
+def test_queue_and_gallery_via_api():
+    with TestClient(app) as c:
+        reset = c.post("/api/queue/reset")
+        assert reset.status_code == 200
+        q = c.get("/api/queue").json()
+        assert len(q["cases"]) >= 8
+        started = c.post("/api/queue/q01/start")
+        assert started.status_code == 200
+        snap = _wait(c, started.json()["id"])
+        assert snap["queue_id"] == "q01"
+        assert snap["status"] in {"awaiting_approval", "escalated"}
+        q2 = c.get("/api/queue").json()
+        row = next(x for x in q2["cases"] if x["id"] == "q01")
+        assert row["run_id"] == snap["id"]
+        gal = c.get("/api/gallery").json()
+        ids = {x["id"] for x in gal["cases"]}
+        assert "26-E-37934" in ids
+        ran = c.post("/api/gallery/run").json()
+        assert 0 <= ran["accuracy"] <= 1
+        assert ran["count"] >= 3

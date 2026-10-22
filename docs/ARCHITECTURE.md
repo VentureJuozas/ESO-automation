@@ -52,3 +52,7 @@ New household, 11 kW, 3F, `54.55929, 25.27955` → TP 12-608, overhead `L-200`, 
 ## Manual time
 
 The value strip compares agent seconds to an **assumed** 2–4 hour engineer baseline. That is not ESO statistics.
+
+## Manager desk (round 3)
+
+The default view is a queue of today's 12-608 applications (synthetic, redacted). **Paleisti visas** runs each case through the same LangGraph. Clicking a row opens that run on the n8n canvas. The engineer inbox can approve, edit §3, or override with a reason. Failures produce a designed reinforcement brief (rungs 4–6). Every run has an immutable audit export (JSON + HTML, SHA-256). A historical gallery replays issued 12-608 TS and the two detailed reference cases and scores match/mismatch honestly.

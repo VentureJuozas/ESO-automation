@@ -7,17 +7,22 @@ import HowItWorks from "./components/HowItWorks.jsx";
 import RuleSheet from "./components/RuleSheet.jsx";
 import TimeSaved from "./components/viz/TimeSaved.jsx";
 import IntakePanel from "./components/viz/IntakePanel.jsx";
+import QueueDesk from "./components/QueueDesk.jsx";
+import Gallery from "./components/Gallery.jsx";
 import { scenarioStickies } from "./workflow.js";
 
 const EMPTY_FORM = { kw: 11, phases: 3, lat: 54.55929, lon: 25.27955, text: "", pending_kw: 0, object_name: "Naujas buitinis objektas" };
 
 export default function App() {
-  const [view, setView] = useState("case");
+  const [view, setView] = useState("queue");
   const [scenarios, setScenarios] = useState([]);
   const [samples, setSamples] = useState([]);
   const [history, setHistory] = useState([]);
   const [architecture, setArchitecture] = useState(null);
+  const [queue, setQueue] = useState(null);
+  const [gallery, setGallery] = useState(null);
   const [scenarioId, setScenarioId] = useState("hero");
+  const [activeQueueId, setActiveQueueId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [run, setRun] = useState(null);
   const [events, setEvents] = useState([]);
@@ -28,14 +33,37 @@ export default function App() {
   const [open, setOpen] = useState({ paraiskos: true, istorija: true, kita: true });
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [overrideReason, setOverrideReason] = useState("");
+  const [batching, setBatching] = useState(false);
+  const [galleryRunning, setGalleryRunning] = useState(false);
+  const [inboxBusy, setInboxBusy] = useState(false);
   const stopRef = useRef(() => {});
+
+  function refreshQueue() {
+    return getJSON("/api/queue").then((q) => {
+      setQueue(q);
+      if (q.batching) setBatching(true);
+      return q;
+    }).catch(() => {});
+  }
 
   useEffect(() => {
     getJSON("/api/scenarios").then(setScenarios).catch((e) => setError(String(e)));
     getJSON("/api/samples").then(setSamples).catch(() => {});
     getJSON("/api/architecture").then(setArchitecture).catch(() => {});
     getJSON("/api/runs").then(setHistory).catch(() => {});
+    refreshQueue();
+    getJSON("/api/gallery").then(setGallery).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!batching && !(queue?.hud?.running)) return undefined;
+    const t = setInterval(() => {
+      refreshQueue().then((q) => {
+        if (q && q.hud.running === 0 && q.hud.new === 0) setBatching(false);
+      });
+    }, 550);
+    return () => clearInterval(t);
+  }, [batching, queue?.hud?.running]);
 
   const current = scenarios.find((s) => s.id === scenarioId);
   const snap = run;
@@ -58,8 +86,51 @@ export default function App() {
     setInspectorOpen(true);
   }
 
+  function listen(created) {
+    stopRef.current();
+    const close = connectEvents(
+      created.id,
+      (ev) => {
+        if (ev.type === "start") {
+          setRunningTool(ev.tool);
+          setSelected(ev.tool);
+          setInspectorOpen(true);
+        } else if (ev.type === "tool") {
+          setEvents((xs) => [...xs, ev]);
+          setRunningTool(null);
+          setSelected(ev.tool);
+        } else if (ev.type === "interrupt") {
+          setEvents((xs) => [...xs, ev]);
+          setRunningTool(null);
+          setSelected(ev.tool || (ev.failed ? "escalate" : "engineer_approval"));
+          setInspectorOpen(true);
+        } else if (ev.type === "status" || ev.type === "done") {
+          if (ev.snapshot) {
+            setRun(ev.snapshot);
+            if (ev.snapshot.draft?.section3) setSection3(ev.snapshot.draft.section3);
+            if (ev.snapshot.events) setEvents(ev.snapshot.events);
+          } else {
+            getJSON(`/api/runs/${created.id}`).then((r) => {
+              setRun(r);
+              if (r.events) setEvents(r.events);
+            });
+          }
+          if (ev.type === "done") setRunningTool(null);
+          getJSON("/api/runs").then(setHistory).catch(() => {});
+          refreshQueue();
+        } else if (ev.type === "error") {
+          setError(ev.message || "Klaida");
+          setRunningTool(null);
+        }
+      },
+      () => {}
+    );
+    stopRef.current = close;
+  }
+
   function pickScenario(s) {
     setScenarioId(s.id);
+    setActiveQueueId(null);
     setView("case");
     setForm({ ...EMPTY_FORM, ...s.form });
     setRun(null);
@@ -73,6 +144,7 @@ export default function App() {
 
   function openIntake() {
     setScenarioId("intake");
+    setActiveQueueId(null);
     setView("intake");
     setForm({ ...EMPTY_FORM, text: samples[0]?.text || "" });
     setRun(null);
@@ -94,89 +166,114 @@ export default function App() {
     setView("case");
     stopRef.current();
     try {
-      const sid = scenarioId === "intake" ? "intake" : scenarioId;
-      const created = await postJSON("/api/runs", { scenario_id: sid, text: form.text, form });
+      let created;
+      if (activeQueueId) {
+        created = await postJSON(`/api/queue/${activeQueueId}/start`, {});
+      } else {
+        const sid = scenarioId === "intake" ? "intake" : scenarioId;
+        created = await postJSON("/api/runs", { scenario_id: sid, text: form.text, form });
+      }
       setRun(created);
-      const close = connectEvents(
-        created.id,
-        (ev) => {
-          if (ev.type === "start") {
-            setRunningTool(ev.tool);
-            setSelected(ev.tool);
-            setInspectorOpen(true);
-          } else if (ev.type === "tool") {
-            setEvents((xs) => [...xs, ev]);
-            setRunningTool(null);
-            setSelected(ev.tool);
-          } else if (ev.type === "interrupt") {
-            setEvents((xs) => [...xs, ev]);
-            setRunningTool(null);
-            setSelected(ev.tool || (ev.failed ? "escalate" : "engineer_approval"));
-            setInspectorOpen(true);
-          } else if (ev.type === "status" || ev.type === "done") {
-            if (ev.snapshot) {
-              setRun(ev.snapshot);
-              if (ev.snapshot.draft?.section3) setSection3(ev.snapshot.draft.section3);
-              if (ev.snapshot.events) setEvents(ev.snapshot.events);
-            } else {
-              getJSON(`/api/runs/${created.id}`).then((r) => {
-                setRun(r);
-                if (r.events) setEvents(r.events);
-              });
-            }
-            if (ev.type === "done") setRunningTool(null);
-            getJSON("/api/runs").then(setHistory).catch(() => {});
-          } else if (ev.type === "error") {
-            setError(ev.message || "Klaida");
-            setRunningTool(null);
-          }
-        },
-        () => {}
-      );
-      stopRef.current = close;
+      listen(created);
     } catch (e) {
       setError(String(e));
       setRunningTool(null);
     }
   }
 
-  async function approve() {
-    if (!run?.id) return;
-    setRunningTool("issue_ts");
-    setSelected("issue_ts");
-    const snap2 = await postJSON(`/api/runs/${run.id}/resume`, {
-      decision: "approve",
-      section3,
-    });
-    setRun(snap2);
-    setEvents(snap2.events || events);
-    setRunningTool(null);
-    setSelected("issue_ts");
-    getJSON("/api/runs").then(setHistory).catch(() => {});
+  async function openCase(c) {
+    setError("");
+    setActiveQueueId(c.id);
+    setScenarioId("queue");
+    setForm({ ...EMPTY_FORM, ...(c.form || {}) });
+    setSection3(c.section3 || "");
+    setSelected("parse_request");
+    setInspectorOpen(true);
+    setOverrideReason("");
+    setView("case");
+    if (c.run_id) {
+      const r = await getJSON(`/api/runs/${c.run_id}`);
+      setRun(r);
+      setEvents(r.events || []);
+      if (r.draft?.section3) setSection3(r.draft.section3);
+      if (r.status === "running") listen(r);
+      return;
+    }
+    setRun(null);
+    setEvents([]);
+    setRunningTool("parse_request");
+    try {
+      const created = await postJSON(`/api/queue/${c.id}/start`, {});
+      setRun(created);
+      listen(created);
+    } catch (e) {
+      setError(String(e));
+      setRunningTool(null);
+    }
   }
 
-  async function override() {
-    if (!run?.id) return;
-    setError("");
-    try {
-      const snap2 = await postJSON(`/api/runs/${run.id}/resume`, {
-        decision: "override",
-        override_reason: overrideReason,
-      });
+  async function openRun(rid) {
+    const r = await getJSON(`/api/runs/${rid}`);
+    setRun(r);
+    setEvents(r.events || []);
+    setView("case");
+    setSelected("parse_request");
+    setInspectorOpen(true);
+    setActiveQueueId(r.queue_id || null);
+    if (r.draft?.section3) setSection3(r.draft.section3);
+  }
+
+  async function approve(fromInbox, extraSection3) {
+    const rid = fromInbox?.run_id || run?.id;
+    if (!rid) return;
+    if (!fromInbox) {
+      setRunningTool("issue_ts");
+      setSelected("issue_ts");
+    }
+    const snap2 = await postJSON(`/api/runs/${rid}/resume`, {
+      decision: "approve",
+      section3: extraSection3 || section3,
+    });
+    if (!fromInbox || rid === run?.id) {
       setRun(snap2);
       setEvents(snap2.events || events);
-      setSelected("engineer_approval");
-      if (snap2.draft?.section3) setSection3(snap2.draft.section3);
+      setRunningTool(null);
+      setSelected("issue_ts");
+    }
+    getJSON("/api/runs").then(setHistory).catch(() => {});
+    refreshQueue();
+  }
+
+  async function override(fromInbox, reason) {
+    const rid = fromInbox?.run_id || run?.id;
+    if (!rid) return;
+    setError("");
+    try {
+      const snap2 = await postJSON(`/api/runs/${rid}/resume`, {
+        decision: "override",
+        override_reason: reason || overrideReason,
+      });
+      if (!fromInbox || rid === run?.id) {
+        setRun(snap2);
+        setEvents(snap2.events || events);
+        setSelected("engineer_approval");
+        if (snap2.draft?.section3) setSection3(snap2.draft.section3);
+      }
+      refreshQueue();
     } catch (e) {
       setError(String(e.message || e));
     }
   }
 
-  async function saveEdit() {
-    if (!run?.id) return;
-    const snap2 = await postJSON(`/api/runs/${run.id}/resume`, { decision: "edit", section3 });
-    setRun(snap2);
-    setEvents(snap2.events || events);
+  async function saveEdit(fromInbox, extraSection3) {
+    const rid = fromInbox?.run_id || run?.id;
+    if (!rid) return;
+    const snap2 = await postJSON(`/api/runs/${rid}/resume`, { decision: "edit", section3: extraSection3 || section3 });
+    if (!fromInbox || rid === run?.id) {
+      setRun(snap2);
+      setEvents(snap2.events || events);
+    }
+    refreshQueue();
   }
 
   async function rerun(fromTool) {
@@ -189,6 +286,42 @@ export default function App() {
     setRun(snap2);
     setEvents(snap2.events || []);
     setRunningTool(null);
+    refreshQueue();
+  }
+
+  async function batchAll() {
+    setBatching(true);
+    await postJSON("/api/queue/batch", {});
+    refreshQueue();
+  }
+
+  async function resetQueue() {
+    const q = await postJSON("/api/queue/reset", {});
+    setQueue(q);
+    setBatching(false);
+  }
+
+  async function runGallery() {
+    setGalleryRunning(true);
+    try {
+      const last = await postJSON("/api/gallery/run", {});
+      setGallery((g) => ({ ...(g || {}), last }));
+    } finally {
+      setGalleryRunning(false);
+    }
+  }
+
+  async function inboxApprove(item, s3) {
+    setInboxBusy(true);
+    try { await approve(item, s3); } finally { setInboxBusy(false); }
+  }
+  async function inboxOverride(item, reason) {
+    setInboxBusy(true);
+    try { await override(item, reason); } finally { setInboxBusy(false); }
+  }
+  async function inboxEdit(item, s3) {
+    setInboxBusy(true);
+    try { await saveEdit(item, s3); } finally { setInboxBusy(false); }
   }
 
   const waiting = status === "awaiting_approval" || status === "escalated";
@@ -209,16 +342,28 @@ export default function App() {
       ? "Taisyklės"
       : view === "intake"
         ? "Nauja paraiška"
-        : <>Paraiškos <span>/</span> {current?.title || (scenarioId === "intake" ? "Nauja paraiška" : "Naujas vartotojas, TP 12-608")}</>;
+        : view === "queue"
+          ? "Vadovo eilė"
+          : view === "gallery"
+            ? "Istorinė galerija"
+            : <>Paraiškos <span>/</span> {current?.title || (scenarioId === "intake" ? "Nauja paraiška" : scenarioId === "queue" ? (run?.title || "Eilės byla") : "Naujas vartotojas, TP 12-608")}</>;
 
   return (
     <div className="app">
       <aside className="side">
         <div className="brand">
           <span className="mark"><Icon name="branch" size={16} /></span>
-          <div><b>Sąlygos</b><small>Prijungimo eiga</small></div>
+          <div><b>Sąlygos</b><small>Vadovo eilė · n8n drobė</small></div>
         </div>
         <nav className="nav">
+          <button className={`item intake-nav${view === "queue" ? " on" : ""}`} type="button" onClick={() => { setView("queue"); refreshQueue(); }}>
+            <b>Vadovo eilė</b>
+            <small>{queue?.hud?.inbox_depth ?? 0} laukia · {queue?.hud?.new ?? 0} naujos</small>
+          </button>
+          <button className={`item${view === "gallery" ? " on" : ""}`} type="button" onClick={() => { setView("gallery"); getJSON("/api/gallery").then(setGallery).catch(() => {}); }}>
+            <b>Istorinė galerija</b>
+            <small>Back-test vs išduotos TS</small>
+          </button>
           <button className={`item intake-nav${view === "intake" || scenarioId === "intake" ? " on" : ""}`} type="button" onClick={openIntake}>
             <b>Nauja paraiška</b>
             <small>Laiškas, forma, žemėlapis</small>
@@ -239,8 +384,8 @@ export default function App() {
               Istorija <span className="count">{history.length}</span>
             </button>
             {open.istorija && history.map((h) => (
-              <button key={h.id} className="item" type="button" onClick={() => getJSON(`/api/runs/${h.id}`).then((r) => { setRun(r); setEvents(r.events || []); setView("case"); setSelected("parse_request"); setInspectorOpen(true); })}>
-                <b>{h.id.slice(0, 6)} · {h.solution || "—"} {h.kw} kW</b>
+              <button key={h.id} className="item" type="button" onClick={() => openRun(h.id)}>
+                <b>{(h.title || h.id).toString().slice(0, 22)} · {h.solution || "—"} {h.kw} kW</b>
                 <small>{h.status}</small>
               </button>
             ))}
@@ -274,8 +419,14 @@ export default function App() {
                 {status === "issued" && run?.id && (
                   <a className="go" href={`/api/runs/${run.id}/ts.html`} target="_blank" rel="noreferrer">Atidaryti TS</a>
                 )}
+                {run?.id && (
+                  <a className="go" href={`/api/runs/${run.id}/audit.html`} target="_blank" rel="noreferrer">Auditas</a>
+                )}
                 <button className="exec" type="button" onClick={start} disabled={status === "running" || Boolean(runningTool)}>Paleisti eigą</button>
               </>
+            )}
+            {view === "queue" && (
+              <button className="exec" type="button" onClick={batchAll} disabled={batching || (queue?.hud?.new || 0) === 0}>Paleisti visas</button>
             )}
           </div>
         </header>
@@ -288,6 +439,22 @@ export default function App() {
           {view === "case" && <div className={`exec-hud ${hud.cls}`}>{hud.text}</div>}
           <div className="workspace">
             <div className="wf-wrap">
+              {view === "queue" && (
+                <QueueDesk
+                  queue={queue}
+                  batching={batching}
+                  busy={inboxBusy}
+                  onBatch={batchAll}
+                  onReset={resetQueue}
+                  onOpen={openCase}
+                  onApprove={inboxApprove}
+                  onOverride={inboxOverride}
+                  onEdit={inboxEdit}
+                />
+              )}
+              {view === "gallery" && (
+                <Gallery gallery={gallery} running={galleryRunning} onRun={runGallery} onOpenRun={openRun} />
+              )}
               {view === "intake" && (
                 <IntakePanel form={form} setForm={setForm} samples={samples} onStart={start} running={Boolean(runningTool)} />
               )}
@@ -299,7 +466,7 @@ export default function App() {
                   skipped={skipped}
                   selectedId={selected}
                   onSelect={pickNode}
-                  stickies={scenarioStickies(current || (scenarioId === "intake" ? { title: "Nauja paraiška", subtitle: "Laisvas tekstas", notes: "Deterministinis parseris, jei nėra rakto." } : null))}
+                  stickies={scenarioStickies(current || (scenarioId === "intake" || scenarioId === "queue" ? { title: run?.title || "Eilės byla", subtitle: run?.assignee || "Vadovo eilė", notes: "Sintetinė / redaguota paraiška. Be asmens duomenų." } : null))}
                   inspectorOpen={inspectorOpen}
                   followId={runningTool}
                 />
@@ -323,7 +490,7 @@ export default function App() {
                 />
               )}
             </div>
-            {inspectorOpen ? (
+            {view !== "queue" && view !== "gallery" && (inspectorOpen ? (
               <div className="inspector">
                 {view === "case" && (
                   <StepSheet
@@ -391,7 +558,7 @@ export default function App() {
               </div>
             ) : (
               <button type="button" className="insp-reopen" onClick={() => setInspectorOpen(true)}>Mazgas</button>
-            )}
+            ))}
           </div>
           {view === "case" && status === "escalated" && (
             <div className="dock bad">
@@ -410,7 +577,10 @@ export default function App() {
                   onChange={(e) => setOverrideReason(e.target.value)}
                 />
               </div>
-              <button className="ink" type="button" onClick={override} disabled={overrideReason.trim().length < 8}>
+              {run?.id && (
+                <a className="go" href={`/api/runs/${run.id}/brief.html`} target="_blank" rel="noreferrer">Stiprinimo paketas</a>
+              )}
+              <button className="ink" type="button" onClick={() => override()} disabled={overrideReason.trim().length < 8}>
                 Inžinieriaus override
               </button>
             </div>
@@ -424,8 +594,9 @@ export default function App() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="go" type="button" onClick={saveEdit}>Įrašyti §3 pataisą</button>
-                <button className="exec" type="button" onClick={approve}>Patvirtinti ir išduoti</button>
+                {run?.id && <a className="go" href={`/api/runs/${run.id}/audit.html`} target="_blank" rel="noreferrer">Auditas</a>}
+                <button className="go" type="button" onClick={() => saveEdit()}>Įrašyti §3 pataisą</button>
+                <button className="exec" type="button" onClick={() => approve()}>Patvirtinti ir išduoti</button>
               </div>
             </div>
           )}

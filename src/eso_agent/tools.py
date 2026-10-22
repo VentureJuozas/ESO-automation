@@ -7,6 +7,7 @@ from line_load import evaluate as evaluate_line
 
 from eso_agent.catalog import tool_by_id
 from eso_agent.cost import estimate_cost as build_cost
+from eso_agent.brief import build_reinforcement_brief
 from eso_agent.document import REDACTED_ADDRESS, REDACTED_CUSTOMER, build_ts_document
 from eso_agent.llm import llm_mode, parse_request as llm_parse, phrase_ts_offline, phrase_ts_with_llm
 from eso_agent.models import RequestForm
@@ -721,6 +722,21 @@ def escalate_package(checks: list[dict[str, Any]]) -> dict[str, Any]:
     bar = out.get("transformer_bar") or {}
     after = bar.get("after_kw")
     limit = bar.get("limit_80_kw") or 320
+    numbers = {
+        "peak_kw": bar.get("before_kw"),
+        "requested_kw": bar.get("added_kw"),
+        "after_kw": after,
+        "limit_80_kw": limit,
+        "limit_90_kw": bar.get("limit_90_kw"),
+        "over_kw": round((after or 0) - limit, 1) if after is not None else None,
+    }
+    pending_kw, pending_n = 0.0, 0
+    try:
+        from eso_agent.queue import pending_queue_load
+        pending_kw, pending_n = pending_queue_load()
+    except Exception:  # noqa: BLE001
+        pending_kw, pending_n = 0.0, 0
+    brief = build_reinforcement_brief(numbers, pending_kw=pending_kw, pending_cases=pending_n)
     return _annotate({
         "tool": "escalate",
         "title": "Perdavimas inžinieriui",
@@ -731,27 +747,18 @@ def escalate_package(checks: list[dict[str, Any]]) -> dict[str, Any]:
             "failed_at": (cap or {}).get("tool") or "check_capacity",
             "reasons": reasons,
             "reason": reasons[0] if reasons else None,
-            "numbers": {
-                "peak_kw": bar.get("before_kw"),
-                "requested_kw": bar.get("added_kw"),
-                "after_kw": after,
-                "limit_80_kw": limit,
-                "limit_90_kw": bar.get("limit_90_kw"),
-                "over_kw": round((after or 0) - limit, 1) if after is not None else None,
-            },
-            "suggested_next": (
-                "5 pakopa — transformatoriaus keitimas / stiprinimas (už šio demo SCOPE). "
-                "Sąlygos neišduodamos be inžinieriaus override su priežastimi."
-            ),
-            "next_level": "4–6 pakopa (linijos stiprinimas / transformatorius / nauja TP) — už SCOPE ribų",
+            "numbers": numbers,
+            "brief": brief,
+            "suggested_next": brief["options"][0]["next_step"],
+            "next_level": "4–6 pakopa (linijos stiprinimas / transformatorius / nauja TP)",
             "attachments": {
                 "steps": out.get("steps"),
                 "transformer_bar": bar,
                 "source_tags": (cap or {}).get("source_tags") or ["real", "rule"],
             },
-            "safety": "Vieno mygtuko „išduoti vis tiek“ nėra. Override reikalauja priežasties ir rašomas į auditą.",
+            "safety": brief["safety"],
         },
-        "source_tags": ["rule", "real"],
+        "source_tags": ["rule", "real", "inferred"],
         "notes": reasons,
         "ok": True,
     })

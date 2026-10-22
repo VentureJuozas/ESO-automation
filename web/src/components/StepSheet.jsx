@@ -51,7 +51,7 @@ function Viz({ ev, section3, setSection3, canEdit, runId, document, audit }) {
     case "issue_ts":
       return <TsDocument document={doc} section3={section3} onChange={setSection3} editable={canEdit} runId={runId} />;
     case "escalate":
-      return <EscalatePanel pkg={o} audit={audit} />;
+      return <EscalatePanel pkg={o} audit={audit} runId={runId} />;
     default:
       return null;
   }
@@ -187,6 +187,12 @@ export default function StepSheet({
           )}
           {(event?.notes || []).filter(Boolean).map((n) => <p key={n} style={{ color: "var(--muted)", fontSize: 12 }}>{n}</p>)}
         </div>
+        {runId && (
+          <p className="inbox-actions" style={{ marginTop: 12 }}>
+            <a className="go" href={`/api/runs/${runId}/audit.html`} target="_blank" rel="noreferrer">Auditas</a>
+            <a className="go" href={`/api/runs/${runId}/audit.json`} target="_blank" rel="noreferrer">JSON</a>
+          </p>
+        )}
         {onRerun && event?.tool && event.tool !== "engineer_approval" && event.tool !== "escalate" && (
           <button className="go" type="button" onClick={() => onRerun(event.tool)}>Perskaičiuoti nuo čia</button>
         )}

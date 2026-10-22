@@ -25,6 +25,7 @@ from eso_agent.graph import (
 )
 from eso_agent.llm import llm_mode
 from eso_agent.rules import MANUAL_TIME_ASSUMPTION_MINUTES, MANUAL_TIME_ASSUMPTION_NOTE
+from eso_agent.queue import attach_run, ensure_queue, get_case, queue_public, sync_case_from_run
 from eso_agent.scenarios import INTAKE_SAMPLES, all_scenarios, get_scenario
 from eso_agent.timing import comparison_payload, replay_ms
 
@@ -149,6 +150,10 @@ def snapshot(run: dict[str, Any]) -> dict[str, Any]:
         "skipped": _skipped(run),
         "audit": list(run.get("audit") or []),
         "overridden": bool(st.get("overridden")),
+        "queue_id": run.get("queue_id"),
+        "assignee": run.get("assignee"),
+        "title": run.get("title"),
+        "submitted_at": run.get("submitted_at"),
     }
 
 
@@ -182,6 +187,9 @@ def list_runs() -> list[dict[str, Any]]:
                 "phases": parsed.get("phases"),
                 "solution": sol.get("id"),
                 "failed": bool(run["state"].get("failed")),
+                "queue_id": run.get("queue_id"),
+                "assignee": run.get("assignee"),
+                "title": run.get("title"),
             }
         )
     return out
@@ -224,19 +232,26 @@ async def execute(run_id: str) -> None:
         run["status"] = "escalated" if run["state"].get("failed") else "awaiting_approval"
         interrupt = _interrupt_event(run)
         run["events"].append(interrupt)
+        sync_case_from_run(run)
         await _broadcast(run, interrupt)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
     except Exception as exc:  # noqa: BLE001
         run["status"] = "error"
         run["error"] = str(exc)
+        sync_case_from_run(run)
         await _broadcast(run, {"type": "error", "message": str(exc)})
 
 
 def create_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) -> dict[str, Any]:
-    if scenario_id and scenario_id not in {None, "", "intake"}:
-        sc = get_scenario(scenario_id)
-        form = dict(sc["form"])
-        text = form.get("text") or text
+    form = dict(form or {})
+    meta = form.pop("_queue", {}) if isinstance(form.get("_queue"), dict) else {}
+    if scenario_id and scenario_id not in {None, "", "intake", "queue"}:
+        try:
+            sc = get_scenario(scenario_id)
+            form = dict(sc["form"])
+            text = form.get("text") or text
+        except KeyError:
+            pass
     rid = uuid.uuid4().hex[:10]
     run = {
         "id": rid,
@@ -247,7 +262,7 @@ def create_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) 
         "queues": [],
         "delay": _delay(),
         "state": {
-            "text": text or "",
+            "text": text or form.get("text") or "",
             "form": form or {},
             "run_id": rid,
             "events": [],
@@ -255,8 +270,14 @@ def create_run(scenario_id: str | None, text: str, form: dict[str, Any] | None) 
         },
         "error": None,
         "audit": [],
+        "queue_id": meta.get("queue_id"),
+        "assignee": meta.get("assignee"),
+        "title": meta.get("title"),
+        "submitted_at": meta.get("submitted_at"),
     }
     RUNS[rid] = run
+    if run["queue_id"]:
+        attach_run(run["queue_id"], rid)
     return run
 
 
@@ -327,21 +348,30 @@ async def resume(
         run["status"] = "awaiting_approval"
         interrupt = _interrupt_event(run)
         run["events"].append(interrupt)
+        sync_case_from_run(run)
         await _broadcast(run, interrupt)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
         return snapshot(run)
     if decision == "edit" and section3:
         if run["state"].get("failed") and not run["state"].get("overridden"):
             raise ValueError("Eskaluotos eigos negalima taisyti be override.")
+        run.setdefault("audit", []).append(
+            {"ts": time.time(), "action": "edit_section3", "reason": "§3 pataisa", "actor": "engineer"}
+        )
         await _run_fn(run, n_draft)
         run["status"] = "awaiting_approval"
+        sync_case_from_run(run)
         await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
         return snapshot(run)
     if decision == "approve":
         if run["state"].get("failed") and not run["state"].get("overridden"):
             raise ValueError("Sąlygos neišduodamos eskalacijos metu. Reikalingas inžinieriaus override su priežastimi.")
+        run.setdefault("audit", []).append(
+            {"ts": time.time(), "action": "approve", "reason": "Patvirtinta ir išduota", "actor": "engineer"}
+        )
         await _run_fn(run, n_issue)
         run["status"] = "issued"
+        sync_case_from_run(run)
         done = {"type": "done", "status": "issued", "id": run_id, "snapshot": snapshot(run)}
         await _broadcast(run, done)
         return snapshot(run)
@@ -404,6 +434,7 @@ async def rerun_from(run_id: str, from_tool: str, overrides: dict[str, Any] | No
     run["status"] = "escalated" if run["state"].get("failed") else "awaiting_approval"
     interrupt = _interrupt_event(run)
     run["events"].append(interrupt)
+    sync_case_from_run(run)
     await _broadcast(run, interrupt)
     await _broadcast(run, {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)})
     return snapshot(run)
@@ -459,6 +490,7 @@ def run_sync_until_interrupt(
     run["status"] = "escalated" if state.get("failed") else "awaiting_approval"
     run["state"] = state
     run["events"].append(_interrupt_event(run))
+    sync_case_from_run(run)
     return snapshot(run)
 
 
@@ -473,6 +505,7 @@ def approve_sync(run_id: str, section3: str | None = None) -> dict[str, Any]:
     run["state"] = {**run["state"], **n_issue(run["state"])}
     _emit_tool(run, run["state"]["events"][-1], replay_ms("issue_ts"))
     run["status"] = "issued"
+    sync_case_from_run(run)
     return snapshot(run)
 
 
@@ -501,7 +534,72 @@ def override_sync(run_id: str, reason: str) -> dict[str, Any]:
         _step(fn)
     run["status"] = "awaiting_approval"
     run["events"].append(_interrupt_event(run))
+    sync_case_from_run(run)
     return snapshot(run)
+
+
+_BATCH = {"running": False}
+
+
+def _queue_form(case: dict[str, Any]) -> dict[str, Any]:
+    form = dict(case.get("form") or {})
+    form["_queue"] = {
+        "queue_id": case["id"],
+        "assignee": case.get("assignee"),
+        "title": case.get("title"),
+        "submitted_at": case.get("submitted_at"),
+    }
+    return form
+
+
+async def start_queue_case(cid: str, wait: bool = False) -> dict[str, Any]:
+    case = get_case(cid)
+    form = _queue_form(case)
+    run = create_run("queue", form.get("text") or "", form)
+    if wait:
+        await execute(run["id"])
+        return snapshot(run)
+    asyncio.create_task(execute(run["id"]))
+    return snapshot(run)
+
+
+async def _run_batch() -> None:
+    try:
+        for case in list(ensure_queue()):
+            if case.get("status") != "new":
+                continue
+            try:
+                await start_queue_case(case["id"], wait=True)
+            except Exception as exc:  # noqa: BLE001
+                case["status"] = "error"
+                case["error"] = str(exc)
+                sync_case_from_run({"id": None, "queue_id": case["id"], "status": "error", "state": {}})
+    finally:
+        _BATCH["running"] = False
+
+
+async def batch_queue() -> dict[str, Any]:
+    ensure_queue()
+    if _BATCH.get("running"):
+        return {"ok": True, "already": True, "batching": True, **queue_public()}
+    _BATCH["running"] = True
+    asyncio.create_task(_run_batch())
+    return {"ok": True, "already": False, "batching": True, **queue_public()}
+
+
+def run_queue_case_sync(cid: str) -> dict[str, Any]:
+    case = get_case(cid)
+    form = _queue_form(case)
+    return run_sync_until_interrupt("queue", delay=0, text=form.get("text") or "", form=form)
+
+
+def batch_queue_sync() -> list[dict[str, Any]]:
+    ensure_queue()
+    return [run_queue_case_sync(c["id"]) for c in list(ensure_queue()) if c.get("status") == "new"]
+
+
+def batching() -> bool:
+    return bool(_BATCH.get("running"))
 
 
 def scenarios_public() -> list[dict[str, Any]]:

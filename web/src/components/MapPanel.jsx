@@ -4,50 +4,66 @@ import "leaflet/dist/leaflet.css";
 import { fmtLt } from "../steps.js";
 import SourceTags from "./SourceTags.jsx";
 
+function addTiles(m) {
+  const esri = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: "Tiles © Esri · topologija sintetinė",
+  });
+  const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap · topologija sintetinė",
+  });
+  esri.addTo(m);
+  let swapped = false;
+  esri.on("tileerror", () => {
+    if (swapped) return;
+    swapped = true;
+    m.removeLayer(esri);
+    osm.addTo(m);
+  });
+}
+
 function drawMap(el, map, pickable, onPick) {
   if (!el) return null;
   const m = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: !pickable });
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 19,
-    attribution: "Tiles © Esri · topologija sintetinė",
-  }).addTo(m);
+  addTiles(m);
   const colors = Object.fromEntries((map.feeders || []).map((f) => [f.name, f.color]));
   const bounds = [];
   const sub = map.substation;
   if (sub) {
     L.circleMarker([sub.lat, sub.lon], {
-      radius: 10, color: "#fff", weight: 2, fillColor: "#1c1c1f", fillOpacity: 1,
+      radius: 13, color: "#111", weight: 3, fillColor: "#ffd166", fillOpacity: 1,
     }).addTo(m).bindPopup(`<b>TP ${sub.id || "12-608"}</b><br>400 kW · 227,7 kW viršūnė`);
     L.marker([sub.lat, sub.lon], {
-      icon: L.divIcon({ className: "map-label", html: "TP 12-608", iconSize: [72, 16], iconAnchor: [-8, 8] }),
+      icon: L.divIcon({ className: "map-label strong", html: "TP 12-608", iconSize: [78, 18], iconAnchor: [-10, 10] }),
       interactive: false,
     }).addTo(m);
     bounds.push([sub.lat, sub.lon]);
   }
   const line = map.line?.path || [];
   if (line.length > 1) {
-    L.polyline(line, { color: "#7c5cfc", weight: 4, opacity: 0.85 }).addTo(m);
+    L.polyline(line, { color: "#3b1d8f", weight: 5, opacity: 0.95 }).addTo(m);
   }
   (map.elements || []).forEach((pt) => {
     const selected = pt.id === map.selected?.id;
     L.circleMarker([pt.lat, pt.lon], {
-      radius: selected ? 8 : 4,
-      color: "#fff",
-      weight: selected ? 2 : 1,
-      fillColor: selected ? "#ff6d5a" : (colors[pt.feeder] || "#888"),
-      fillOpacity: 0.95,
+      radius: selected ? 10 : 6,
+      color: "#111",
+      weight: selected ? 3 : 2,
+      fillColor: selected ? "#ff3b2e" : (colors[pt.feeder] || "#222"),
+      fillOpacity: 1,
     }).addTo(m).bindPopup(`${pt.feeder} · ${pt.kind === "pole" ? "atrama" : "spinta"} ${pt.id}`);
     bounds.push([pt.lat, pt.lon]);
   });
   if (map.request) {
     L.circleMarker([map.request.lat, map.request.lon], {
-      radius: 8, color: "#ffd166", weight: 3, fillColor: "#1c1c1f", fillOpacity: 1,
+      radius: 10, color: "#111", weight: 3, fillColor: "#ffe08a", fillOpacity: 1,
     }).addTo(m).bindPopup("Paraiškos taškas (be adreso)");
     bounds.push([map.request.lat, map.request.lon]);
     if (map.selected) {
       L.polyline(
         [[map.request.lat, map.request.lon], [map.selected.lat, map.selected.lon]],
-        { color: "#1c1c1f", weight: 2, dashArray: "5 5" },
+        { color: "#111", weight: 3, dashArray: "5 5" },
       ).addTo(m);
     }
   }
@@ -88,7 +104,7 @@ export default function MapPanel({ map, pickable = false, onPick }) {
         <div><b>Linija</b><span>{map.line?.name || sel?.feeder || "—"}</span></div>
       </div>
       {pickable && <p className="hint" style={{ marginTop: 10 }}>Spustelėkite žemėlapį — paraiškos taškas persikels.</p>}
-      <p className="map-note">Atramos ir L-200 geometrija sintetinė. Be klientų adresų. <SourceTags tags={["synthetic", "real"]} /></p>
+      <p className="map-note">Atramos ir L-200 geometrija sintetinė. Be klientų adresų. Esri plytelės, gedus — OSM. <SourceTags tags={["synthetic", "real"]} /></p>
     </div>
   );
 }

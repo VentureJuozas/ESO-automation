@@ -2,9 +2,12 @@ import { fmtLt } from "../../steps.js";
 import SourceTags from "../SourceTags.jsx";
 import TransformerBar from "./TransformerBar.jsx";
 
-export default function EscalatePanel({ pkg, audit = [] }) {
+export default function EscalatePanel({ pkg, audit = [], runId }) {
   if (!pkg) return null;
   const n = pkg.numbers || {};
+  const brief = pkg.brief || {};
+  const options = brief.options || [];
+  const impact = brief.pending_impact || {};
   return (
     <div className="section escalate-pack">
       <h3>Inžinieriaus perdavimo paketas</h3>
@@ -30,9 +33,42 @@ export default function EscalatePanel({ pkg, audit = [] }) {
         <div><b>90 % riba</b><span>{fmtLt(n.limit_90_kw, 0)} kW</span></div>
         <div><b>Nepraėjo</b><span>{pkg.failed_at}</span></div>
       </div>
-      <p className="hint" style={{ marginTop: 12 }}><b>Kitas žingsnis.</b> {pkg.suggested_next}</p>
+      {options.length > 0 && (
+        <div className="brief-block">
+          <div className="ts-toolbar">
+            <h3>Stiprinimo paketas · 5 pakopa</h3>
+            {runId && (
+              <a className="go" href={`/api/runs/${runId}/brief.html`} target="_blank" rel="noreferrer">A4 / PDF</a>
+            )}
+          </div>
+          {options.map((o) => (
+            <article key={o.id} className={`brief-opt${o.recommended ? " rec" : ""}`}>
+              <header>
+                <b>{o.title}</b>
+                {o.recommended && <span className="badge ok">Rekomenduojama</span>}
+                <span className="badge">{o.tag}</span>
+              </header>
+              <p>{o.why}</p>
+              <div className="kv">
+                <div><b>Kaina</b><span>{o.cost_lo}–{o.cost_hi} {o.currency} (inferred)</span></div>
+                <div><b>Savininkas</b><span>{o.owner}</span></div>
+              </div>
+              <p className="hint"><b>Kitas žingsnis.</b> {o.next_step}</p>
+            </article>
+          ))}
+          <p className="hint">{impact.note}</p>
+          <p className="map-note">{brief.disclaimer}</p>
+        </div>
+      )}
+      {!options.length && <p className="hint" style={{ marginTop: 12 }}><b>Kitas žingsnis.</b> {pkg.suggested_next}</p>}
       <TransformerBar bar={pkg.attachments?.transformer_bar} pass={false} />
-      <p className="map-note">{pkg.safety} <SourceTags tags={pkg.attachments?.source_tags || ["rule", "real"]} /></p>
+      <p className="map-note">{pkg.safety || brief.safety} <SourceTags tags={pkg.attachments?.source_tags || ["rule", "real", "inferred"]} /></p>
+      {runId && (
+        <p className="inbox-actions">
+          <a className="go" href={`/api/runs/${runId}/audit.html`} target="_blank" rel="noreferrer">Audito HTML</a>
+          <a className="go" href={`/api/runs/${runId}/audit.json`} target="_blank" rel="noreferrer">Audito JSON</a>
+        </p>
+      )}
       {audit.length > 0 && (
         <div className="section">
           <h3>Auditas</h3>
