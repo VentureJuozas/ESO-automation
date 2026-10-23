@@ -551,6 +551,9 @@ export default function App() {
                 <button className={`item${view === "customer" ? " on" : ""}`} type="button" onClick={() => setView("customer")}>
                   <b>Klientų maketas</b><small>Paraiška ir būsena</small>
                 </button>
+                <button className={`item${view === "split" ? " on" : ""}`} type="button" onClick={() => { setView("split"); refreshQueue(); }}>
+                  <b>Klientas ir stalas</b><small>Split · minutes, ne dienos</small>
+                </button>
                 <a className="item" href="/api/onepager.html" target="_blank" rel="noreferrer">
                   <b>Vieno lapo santrauka</b><small>A4 palikti žiuriui</small>
                 </a>

@@ -262,12 +262,17 @@ export default function WorkflowCanvas({
           </aside>
         ))}
         {nodes.map((n) => {
-          const st = mode === "arch" ? (selectedId === n.id ? "run" : "wait") : nodeState(n.id, events, runningTool, failed, skipped);
+          const adapter = (architecture?.adapters || []).find((a) => a.id === n.id);
+          const st = mode === "adapters"
+            ? (adapter?.mode === "stub" ? "stop" : "done")
+            : mode === "arch" ? (selectedId === n.id ? "run" : "wait") : nodeState(n.id, events, runningTool, failed, skipped);
           const hidden = mode === "pipeline" && n.id === "escalate" && !failed && (st === "wait" || st === "idle");
           const arch = architecture?.layers?.find((l) => l.id === n.id);
           const ev = lastEvent(n.id, events);
           const summary = st === "skip"
             ? "Praleista"
+            : mode === "adapters"
+              ? `${adapter?.mode || "mock"} · ${n.caption}`
             : mode === "arch" ? (arch?.note || n.caption) : (nodeSummary(n.id, ev) || n.caption);
           const ports = portMap[n.id] || new Set(["left", "right"]);
           return (
@@ -299,6 +304,9 @@ export default function WorkflowCanvas({
               {st === "run" && <span className="n8n-pip run" />}
               {st === "done" && ev?.elapsed_ms != null && (
                 <span className="n8n-ms">{ev.elapsed_ms} ms</span>
+              )}
+              {mode === "adapters" && (
+                <span className={`n8n-ms ad-${adapter?.mode || "mock"}`}>{adapter?.mode || "mock"}</span>
               )}
             </button>
           );

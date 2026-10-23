@@ -7,6 +7,7 @@ const STEPS = ["gauta", "tikrinama", "laukia inžinieriaus", "išduota"];
 export default function CustomerPortal({ compact = false }) {
   const [net, setNet] = useState(null);
   const [form, setForm] = useState({ kw: 11, phases: 3, lat: 54.55929, lon: 25.27955, object_name: "Sodyba (redaguota)" });
+  const [noCoord, setNoCoord] = useState(false);
   const [app, setApp] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -25,7 +26,8 @@ export default function CustomerPortal({ compact = false }) {
     setBusy(true);
     setErr("");
     try {
-      const created = await postJSON("/api/portal/applications", form);
+      const payload = noCoord ? { ...form, lat: null, lon: null } : form;
+      const created = await postJSON("/api/portal/applications", payload);
       setApp(created);
     } catch (ex) {
       setErr(String(ex.message || ex));
@@ -89,10 +91,14 @@ export default function CustomerPortal({ compact = false }) {
               </select>
             </label>
           </div>
-          {map && (
+          <label className="portal-check">
+            <input type="checkbox" checked={noCoord} onChange={(e) => setNoCoord(e.target.checked)} />
+            Neturiu koordinačių — operatorius paprašys
+          </label>
+          {!noCoord && map && (
             <MapPanel map={map} pickable onPick={(p) => setForm((f) => ({ ...f, lat: p.lat, lon: p.lon }))} />
           )}
-          <p className="hint">Spustelėkite žemėlapį. Gatvės nerenkame.</p>
+          <p className="hint">{noCoord ? "Pateikus, eiga sustos prie request_missing_data." : "Spustelėkite žemėlapį. Gatvės nerenkame."}</p>
           {err && <p className="hint">{err}</p>}
           <button className="exec" type="submit" disabled={busy}>Pateikti paraišką</button>
         </form>

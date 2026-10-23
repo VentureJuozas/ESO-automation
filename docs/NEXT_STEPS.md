@@ -4,7 +4,7 @@ Adapters are the map. Each phase replaces one mock with the real ESO system name
 
 ## Round 7 (final, this session)
 
-QA, bug-bash and polish: autoplay timing, split-view at 1366, portal tracker edge states, PDF glyphs, leftover UI chrome.
+QA, bug-bash and polish: autoplay dwell vs 4–5 min script, portal missing-data then PDF in one sitting, PDF Lithuanian glyphs, leftover chrome, 1920 vs 1366 projector.
 
 ## Phase 1 — Swap mocks for live reads
 

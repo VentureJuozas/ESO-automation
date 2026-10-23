@@ -24,6 +24,15 @@ Queue, runs and audit persist in `data/demo.sqlite`. **Atstatyti demo** reseeds.
 
 Jury walkthrough: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) · A4 leave-behind: `/api/onepager.html`
 
+## Screenshots
+
+After `make demo`:
+
+- **Klientų maketas** — household form, tracker gauta → išduota, missing-data reply, TS PDF
+- **Klientas ir stalas** — split: request in on the left, desk on the right
+- **Integracijos** — five adapter nodes (mock / stub) on the n8n canvas
+- **Vieno lapo santrauka** — printable A4 at `/api/onepager.html`
+
 ## Pitch in one minute
 
 1. **Pristatymas** — frozen 4–5 min path, LT/EN, autoplay with pause.

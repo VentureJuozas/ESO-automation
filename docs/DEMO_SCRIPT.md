@@ -17,7 +17,8 @@ The path is a **frozen replay**. Leave-behind: `/api/onepager.html`.
 | 2:25 | Fail brief | 100 kW → 327.7 vs 320. Reinforcement pack. |
 | 2:50 | Gallery | In-scope 95 %, overall 84 %. Taxonomy. 26-E-37934 is (a). |
 | 3:20 | Audit | SHA-256, SQLite. |
-| 3:40 | Time saved | Replay ms vs 2–4 h assumption. |
+| 3:40 | Integracijos | Five adapters, all mock. Stubs name the ESO systems. |
+| 4:00 | Time saved | Replay ms vs 2–4 h assumption. |
 
 ## Live extras (if asked)
 
