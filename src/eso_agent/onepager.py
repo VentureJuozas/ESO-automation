@@ -75,6 +75,7 @@ Sąlygas visada pasirašo žmogus.</p>
       <li>Python priima sprendimus. LLM tik skaito tekstą.</li>
       <li>Trūksta duomenų — laiško peržiūra, eiga laukia.</li>
       <li>Inžinierius tvirtina. Auditas + SHA-256.</li>
+      <li>Išduotas TS — oficialus maketas + GIS priedas (2 psl.).</li>
     </ol>
   </div>
   <div class="box">
@@ -110,9 +111,12 @@ Sąlygas visada pasirašo žmogus.</p>
       <li>TS registras → SharePoint</li>
     </ul>
     <p>Šiandien visos penkios — <b>mock</b>. Stubai aprašyti, neprijungti.</p>
+    <h2>Analitika</h2>
+    <p>Vadovo vaizdas: pralaidumas, medianos, kliūtys, SLA rizika, A/B/C mišinys.
+    Sintetinis mėnuo SQLite. Sutaupytos valandos — <b>prielaida</b>.</p>
   </div>
 </div>
-<footer>12-608 · 400 kVA · viršūnė 227,7 kW · 80 % = 320 kW. make demo · docs/DEMO_SCRIPT.md · {GLYPHS}</footer>
+<footer>12-608 · 400 kVA · viršūnė 227,7 kW · 80 % = 320 kW. TS 2 psl. + GIS priedas. make demo · docs/DEMO_SCRIPT.md · {GLYPHS}</footer>
 </div>
 </body></html>
 """

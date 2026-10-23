@@ -10,7 +10,10 @@ export default function TsDocument({ document: doc, section3, onChange, editable
         <h3>Oficialus TS maketas</h3>
         {runId && (
           <a className="go" href={`/api/runs/${runId}/ts.html`} target="_blank" rel="noreferrer">
-            A4 / PDF
+            A4 / 2 psl.
+          </a>
+          <a className="go" href={`/api/runs/${runId}/ts.pdf`} target="_blank" rel="noreferrer">
+            PDF
           </a>
         )}
       </div>

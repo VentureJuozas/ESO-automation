@@ -33,8 +33,9 @@ After `make demo` (also in the PR walkthrough):
 - **Vadovo eilė** — desk HUD, table, engineer inbox
 - **Klientų maketas** — status page: summary, timeline (including Laukia duomenų), SLA date, TS download
 - **Klientas ir stalas** — request in, TS out
-- **Pristatymas** — 4.5 min autoplay, compact LT/EN bar, restart on the last beat
-- **TS PDF** — DejaVu, ąčęėįšųūž
+- **Pristatymas** — ~4 min 52 s autoplay, compact LT/EN bar, restart on the last beat
+- **TS PDF / HTML** — official-looking demo blank + GIS annex (2 pages), DejaVu, ąčęėįšųūž
+- **Analitika** — synthetic month in SQLite: throughput, medians, bottlenecks, SLA risk, A/B/C mix
 - **Integracijos** — five adapter nodes, mock / stub
 
 ## Pitch in one minute

@@ -1,5 +1,11 @@
 # Changelog
 
+## Round 8 — Official TS + Analitika
+
+Two-page official-looking TS demo blank (no ESO logo): header, 26-E-DEMO-… number, dates, redacted parties, technical parameters, numbered conditions, cost and obligations, engineer signature from the audit, SHA-256 footer. Page 2 is an offline GIS annex (connection point, pole/cabinet, line, legend, scale). Lithuanian glyphs stay in DejaVu. Playwright asserts both pages.
+
+Analitika view in the n8n desk language: throughput/day, median agent vs engineer stage, bottleneck hours (missing data / approval), SLA-risk queue, A/B/C/escalate/waiting mix, cumulative hours saved tagged as an assumption. Seeded synthetic month in SQLite. One present beat; autoplay stays ~4 min 52 s. DEMO_SCRIPT and the one-pager updated.
+
 ## Round 7 — Hardening
 
 Playwright jury e2e in CI (customer → approve → PDF, missing-data, fail brief, what-if 11→100, present LT/EN). Per-beat autoplay totals 4.5 minutes with a hold on split and a restart on the last beat. Compact high-contrast present bar with LT/EN. DejaVu-embedded TS / brief / one-pager PDFs (ąčęėįšųūž). One-pager has a full-screen layout and a print stylesheet. Customer tracker is a status page: summary, timeline with timestamps, Laukia duomenų as its own step, SLA date, download card. FastAPI lifespan. History trimmed. `make demo` still builds `web/dist` when missing.

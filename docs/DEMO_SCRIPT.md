@@ -1,8 +1,8 @@
 # Demo script — 4–5 minutes
 
-Stage: `make demo`. Open http://127.0.0.1:8000. Click **Pristatymas**. Autoplay is **4.5 minutes** with a hold on the split beat. **Pauzė** / space to pause. The compact bar has an obvious **LT / EN** switch. Last beat ends with **Iš naujo**. Arrow keys still work. The TS stays Lithuanian.
+Stage: `make demo`. Open http://127.0.0.1:8000. Click **Pristatymas**. Autoplay is **~4 min 52 s** with a hold on the split beat. **Pauzė** / space to pause. The compact bar has an obvious **LT / EN** switch. Last beat ends with **Iš naujo**. Arrow keys still work. The TS stays Lithuanian.
 
-The path is a **frozen replay**. Leave-behind: `/api/onepager.html` (screen + print) and `/api/onepager.pdf`.
+The path is a **frozen replay**. Leave-behind: `/api/onepager.html` (screen + print) and `/api/onepager.pdf`. Issued TS: two A4 pages — official-looking demo blank + GIS annex.
 
 | Time | Beat | Dwell | Key |
 |---|---|---|---|
@@ -18,10 +18,13 @@ The path is a **frozen replay**. Leave-behind: `/api/onepager.html` (screen + pr
 | 2:50 | Gallery | 30 s | In-scope 95 %, overall 84 %. Taxonomy. 26-E-37934 is (a). |
 | 3:20 | Audit | 20 s | SHA-256, SQLite. |
 | 3:40 | Integracijos | 20 s | Five adapters, all mock. Stubs name the ESO systems. |
-| 4:00 | Time saved | 30 s | Replay ms vs 2–4 h assumption. Ends clean; **Iš naujo**. |
+| 4:00 | Analitika | 22 s | Synthetic month: throughput, medians, bottlenecks, SLA risk, A/B/C mix. Hours saved are an assumption. |
+| 4:22 | Time saved | 30 s | Replay ms vs 2–4 h assumption. Ends clean; **Iš naujo**. |
 
 ## Live extras (if asked)
 
+- **Official TS:** after approve, open the HTML/PDF. Page 1 is the demo blank (26-E-DEMO-…, parties, parameters, conditions, cost, signatures). Page 2 is the GIS annex (connection point, pole/cabinet, line, legend, scale). No ESO logo.
+- **Analitika** in the sidebar: same charts as the present beat. Banner says synthetic.
 - **What-if bar** on a case: drag 11 → 100 kW. Capacity fails, the canvas branch switches to escalate.
 - **Missing data:** open a `Laukia duomenų` row. The graph stopped at `request_missing_data`. Letter preview is not sent. Supply coords → the graph resumes on the same canvas.
 - **What-if fill** in the gallery: of the 7 missing-input files, **6** become matches when the issued TS point is added as virtual GIS. 22-26356 stays an engineer-judgment miss (historical TR swap). This is labelled what-if, not the live score.

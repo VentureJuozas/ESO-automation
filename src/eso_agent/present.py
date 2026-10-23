@@ -184,6 +184,20 @@ BEATS: list[dict[str, Any]] = [
         "dwell_ms": 20000,
     },
     {
+        "id": "analytics",
+        "view": "analytics",
+        "spot": "analytics",
+        "lt": {
+            "title": "Analitika",
+            "say": "Sintetinis mėnuo SQLite. Pralaidumas, medianos, kliūtys, SLA rizika, A/B/C mišinys. Sutaupytos valandos — prielaida.",
+        },
+        "en": {
+            "title": "Analytics",
+            "say": "A synthetic month in SQLite. Throughput, medians, bottlenecks, SLA risk, A/B/C mix. Hours saved are an assumption.",
+        },
+        "dwell_ms": 22000,
+    },
+    {
         "id": "time",
         "view": "case",
         "apply": "hero",
@@ -209,6 +223,7 @@ def frozen_pack() -> dict[str, Any]:
     global _PACK
     if _PACK:
         return _PACK
+    from eso_agent.analytics import analytics_payload
     from eso_agent.audit import build_audit
     from eso_agent.backtest import LAST_GALLERY, run_gallery
     from eso_agent.engine import RUNS, run_sync_until_interrupt
@@ -253,6 +268,7 @@ def frozen_pack() -> dict[str, Any]:
         "queue_before": before,
         "queue_after": after,
         "audit": {"sha256": audit.get("sha256"), "tool_count": len(audit.get("tools") or [])},
+        "analytics": analytics_payload(),
         "autoplay_ms": BEATS[0]["dwell_ms"],
         "total_ms": TOTAL_MS,
         "frozen": True,

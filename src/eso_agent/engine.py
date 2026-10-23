@@ -570,6 +570,9 @@ def approve_sync(run_id: str, section3: str | None = None) -> dict[str, Any]:
     if run["state"].get("failed") and not run["state"].get("overridden"):
         raise ValueError("Sąlygos neišduodamos eskalacijos metu.")
     run["state"]["approval"] = {"decision": "approve", "section3": section3}
+    run.setdefault("audit", []).append(
+        {"ts": time.time(), "action": "approve", "reason": "Patvirtinta ir išduota", "actor": "engineer"}
+    )
     if section3:
         run["state"] = {**run["state"], **n_draft(run["state"])}
         _emit_tool(run, run["state"]["events"][-1], replay_ms("draft_ts_section3"))
@@ -756,6 +759,9 @@ def reset_demo() -> dict[str, Any]:
     QUEUE.clear()
     clear_all()
     reset_queue()
+    from eso_agent.analytics import seed_synthetic_month
+
+    seed_synthetic_month(force=True)
     return queue_public()
 
 

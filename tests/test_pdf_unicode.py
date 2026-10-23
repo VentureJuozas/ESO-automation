@@ -1,5 +1,6 @@
 from eso_agent.fonts import DEJAVU, DEJAVU_BOLD, GLYPHS
-from eso_agent.pdfutil import render_onepager_pdf, render_ts_pdf
+from eso_agent.engine import approve_sync, run_sync_until_interrupt
+from eso_agent.pdfutil import render_official_ts_pdf, render_onepager_pdf, render_ts_pdf
 
 
 def test_dejavu_fonts_shipped():
@@ -14,3 +15,8 @@ def test_ts_and_onepager_pdf_embed_dejavu():
     for blob in (ts, one):
         assert blob[:4] == b"%PDF"
         assert b"DejaVu" in blob
+    snap = run_sync_until_interrupt("hero", delay=0)
+    official = render_official_ts_pdf(approve_sync(snap["id"]))
+    assert official[:4] == b"%PDF"
+    assert b"DejaVu" in official
+    assert b"/Count 2" in official

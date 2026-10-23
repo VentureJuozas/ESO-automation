@@ -18,6 +18,7 @@ from eso_agent.audit import build_audit, render_audit_html  # noqa: E402
 from eso_agent.backtest import gallery_index, run_gallery, run_gallery_whatif  # noqa: E402
 from eso_agent.brief import brief_pdf_bytes, render_brief_html  # noqa: E402
 from eso_agent.catalog import architecture_payload  # noqa: E402
+from eso_agent.analytics import analytics_payload, seed_synthetic_month  # noqa: E402
 from eso_agent.document import render_ts_html  # noqa: E402
 from eso_agent.engine import (  # noqa: E402
     RUNS,
@@ -48,6 +49,7 @@ async def lifespan(_app: FastAPI):
     from eso_agent.queue import ensure_queue
 
     ensure_queue()
+    seed_synthetic_month()
     yield
 
 
@@ -162,6 +164,11 @@ def present_pack():
     from eso_agent.present import frozen_pack
 
     return frozen_pack()
+
+
+@app.get("/api/analytics")
+def analytics_get():
+    return analytics_payload()
 
 
 @app.get("/api/adapters")
@@ -347,6 +354,16 @@ def ts_html(rid: str):
     if rid not in RUNS:
         raise HTTPException(404)
     return HTMLResponse(render_ts_html(snapshot(RUNS[rid])))
+
+
+@app.get("/api/runs/{rid}/ts.pdf")
+def ts_pdf_run(rid: str):
+    if rid not in RUNS:
+        raise HTTPException(404)
+    from eso_agent.pdfutil import render_official_ts_pdf
+
+    data = render_official_ts_pdf(snapshot(RUNS[rid]))
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{rid}.pdf"'})
 
 
 @app.get("/api/runs/{rid}/audit.json")

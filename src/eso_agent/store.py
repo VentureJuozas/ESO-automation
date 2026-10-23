@@ -41,6 +41,9 @@ def connect() -> sqlite3.Connection:
     _CONN.execute(
         "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)"
     )
+    _CONN.execute(
+        "CREATE TABLE IF NOT EXISTS synthetic_history (id TEXT PRIMARY KEY, day TEXT, payload TEXT NOT NULL)"
+    )
     _CONN.commit()
     return _CONN
 
@@ -122,4 +125,31 @@ def clear_all() -> None:
         conn.execute("DELETE FROM ts_registry")
     except sqlite3.OperationalError:
         pass
+    try:
+        conn.execute("DELETE FROM synthetic_history")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
+
+
+def save_synthetic_history(rows: list[dict[str, Any]]) -> None:
+    conn = connect()
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS synthetic_history (id TEXT PRIMARY KEY, day TEXT, payload TEXT NOT NULL)"
+    )
+    conn.execute("DELETE FROM synthetic_history")
+    for row in rows:
+        conn.execute(
+            "INSERT INTO synthetic_history (id, day, payload) VALUES (?, ?, ?)",
+            (row["id"], row.get("day"), json.dumps(row, ensure_ascii=False, default=str)),
+        )
+    conn.commit()
+
+
+def load_synthetic_history() -> list[dict[str, Any]]:
+    conn = connect()
+    try:
+        rows = list(conn.execute("SELECT payload FROM synthetic_history ORDER BY day"))
+    except sqlite3.OperationalError:
+        return []
+    return [json.loads(r["payload"]) for r in rows]

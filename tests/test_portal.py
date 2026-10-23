@@ -26,6 +26,10 @@ def test_portal_submit_track_and_pdf():
             assert b"DejaVu" in pdf.content
             html = c.get(f"/api/portal/applications/{aid}/ts.html")
             assert "redaguot" in html.text.lower()
+            assert 'data-page="2"' in html.text
+            assert "Priedas A" in html.text
+            assert b"/Count 2" in pdf.content
+            assert b"GIS-ANNEX" in pdf.content
             assert got.get("decision_by")
             assert any(x["status"] == "laukia inžinieriaus" for x in got.get("timeline") or [])
 
@@ -56,10 +60,11 @@ def test_onepager_and_adapters_api():
         assert ad["mode"] == "mock"
         assert len(ad["adapters"]) == 5
         pack = c.get("/api/present").json()
-        assert pack["total_ms"] == 270000
+        assert 270000 <= pack["total_ms"] <= 300000
         assert pack["beats"][0]["dwell_ms"] == 20000
         assert any(b["id"] == "split" for b in pack["beats"])
         assert any(b["id"] == "integrations" for b in pack["beats"])
+        assert any(b["id"] == "analytics" for b in pack["beats"])
         assert "ąčęėįšųūž" in html.text
         pdf = c.get("/api/onepager.pdf")
         assert pdf.status_code == 200

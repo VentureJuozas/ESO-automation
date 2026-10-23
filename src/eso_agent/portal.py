@@ -6,9 +6,9 @@ from typing import Any
 
 from eso_agent.adapters import get_adapters
 from eso_agent.adapters.crm import REDACTED_ADDRESS, REDACTED_NAME
-from eso_agent.document import REDACTED_CUSTOMER, render_ts_html
+from eso_agent.document import render_ts_html
 from eso_agent.engine import RUNS, run_sync_until_interrupt, snapshot, supply_data
-from eso_agent.pdfutil import render_ts_pdf
+from eso_agent.pdfutil import render_official_ts_pdf
 from eso_agent.queue import QUEUE, ensure_queue, sla_for
 
 STATUS_MAP = {
@@ -175,19 +175,4 @@ def ts_pdf(app_id: str) -> bytes:
     rec = get_adapters().crm.get(app_id)
     if not rec or not rec.get("run_id") or rec["run_id"] not in RUNS:
         raise KeyError(app_id)
-    snap = snapshot(RUNS[rec["run_id"]])
-    issued = snap.get("issued") or {}
-    doc = issued.get("document") or {}
-    lines = [
-        f"Nr. {issued.get('ts_number') or doc.get('ts_number') or 'PROJEKTAS'}",
-        f"Objektas: {doc.get('object_name') or (snap.get('parsed') or {}).get('object_name')}",
-        f"Klientas: {REDACTED_CUSTOMER}",
-        f"Adresas: {REDACTED_ADDRESS}",
-        f"Galia: {(snap.get('parsed') or {}).get('kw')} kW · {(snap.get('parsed') or {}).get('phases')}F",
-        f"Sprendinys: {(snap.get('solution') or {}).get('id')}  {(snap.get('breaker') or {}).get('label')}",
-        "",
-        issued.get("section3") or (snap.get("draft") or {}).get("section3") or "",
-        "",
-        "Neoficialus dokumentas. Asmens duomenys redaguoti. Sąlygas pasirašo inžinierius.",
-    ]
-    return render_ts_pdf("Prijungimo sąlygos (demonstracija)", lines)
+    return render_official_ts_pdf(snapshot(RUNS[rec["run_id"]]))

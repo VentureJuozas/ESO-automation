@@ -14,6 +14,7 @@ import MissingPanel from "./components/MissingPanel.jsx";
 import WhatIfBar from "./components/WhatIfBar.jsx";
 import CustomerPortal from "./components/CustomerPortal.jsx";
 import AdapterSheet from "./components/AdapterSheet.jsx";
+import Analytics from "./components/Analytics.jsx";
 import { t } from "./i18n.js";
 import { scenarioStickies } from "./workflow.js";
 
@@ -50,6 +51,7 @@ export default function App() {
   const [whatIfBusy, setWhatIfBusy] = useState(false);
   const [presentPlaying, setPresentPlaying] = useState(false);
   const [adapters, setAdapters] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const stopRef = useRef(() => {});
 
   function refreshQueue() {
@@ -68,6 +70,7 @@ export default function App() {
     refreshQueue();
     getJSON("/api/gallery").then(setGallery).catch(() => {});
     getJSON("/api/adapters").then((a) => setAdapters(a.adapters || [])).catch(() => {});
+    getJSON("/api/analytics").then(setAnalytics).catch(() => {});
     getJSON("/api/health").then((h) => {
       if (h.offline) document.body.dataset.offline = "1";
     }).catch(() => { document.body.dataset.offline = "1"; });
@@ -369,6 +372,7 @@ export default function App() {
       setScenarioId("fail_capacity");
     }
     if (beat.apply === "gallery") setGallery((g) => ({ ...(g || {}), last: pack.gallery }));
+    if (beat.view === "analytics" && pack.analytics) setAnalytics(pack.analytics);
     if (beat.select) {
       setSelected(beat.select);
       setInspectorOpen(true);
@@ -507,6 +511,8 @@ export default function App() {
             ? "Klientas ir stalas"
           : view === "integrations"
             ? "Integracijos"
+          : view === "analytics"
+            ? "Analitika"
             : <>Paraiškos <span>/</span> {current?.title || (scenarioId === "intake" ? "Nauja paraiška" : scenarioId === "queue" ? (run?.title || "Eilės byla") : "Naujas vartotojas, TP 12-608")}</>;
 
   return (
@@ -524,6 +530,10 @@ export default function App() {
           <button className={`item${view === "gallery" ? " on" : ""}`} type="button" onClick={() => { setView("gallery"); getJSON("/api/gallery").then(setGallery).catch(() => {}); }}>
             <b>Istorinė galerija</b>
             <small>Back-test vs išduotos TS</small>
+          </button>
+          <button className={`item${view === "analytics" ? " on" : ""}`} type="button" data-testid="nav-analytics" onClick={() => { setView("analytics"); getJSON("/api/analytics").then(setAnalytics).catch(() => {}); }}>
+            <b>{t(lang, "analytics")}</b>
+            <small>Sintetinis mėnuo · prielaida</small>
           </button>
           <button className={`item intake-nav${view === "intake" || scenarioId === "intake" ? " on" : ""}`} type="button" onClick={openIntake}>
             <b>Nauja paraiška</b>
@@ -658,6 +668,7 @@ export default function App() {
                   <Gallery gallery={gallery} running={galleryRunning} onRun={runGallery} onWhatIf={runGalleryWhatIf} onOpenRun={openRun} />
                 </div>
               )}
+              {view === "analytics" && <Analytics data={analytics} />}
               {view === "intake" && (
                 <IntakePanel form={form} setForm={setForm} samples={samples} onStart={start} running={Boolean(runningTool)} />
               )}
@@ -702,7 +713,7 @@ export default function App() {
                 />
               )}
             </div>
-            {view !== "queue" && view !== "gallery" && view !== "customer" && view !== "split" && (inspectorOpen ? (
+            {view !== "queue" && view !== "gallery" && view !== "customer" && view !== "split" && view !== "analytics" && (inspectorOpen ? (
               <div className="inspector">
                 {view === "case" && (
                   <StepSheet

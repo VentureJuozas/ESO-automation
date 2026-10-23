@@ -21,6 +21,18 @@ test("customer submit, desk approve, PDF download", async ({ page, request }) =>
   const body = await pdf.body();
   expect(body.subarray(0, 4).toString()).toBe("%PDF");
   expect(body.includes(Buffer.from("DejaVu"))).toBeTruthy();
+  expect(body.includes(Buffer.from("/Count 2"))).toBeTruthy();
+  expect(body.includes(Buffer.from("GIS-ANNEX"))).toBeTruthy();
+  expect(body.includes(Buffer.from("TS-PAGE-1"))).toBeTruthy();
+  expect(body.includes(Buffer.from("26-E-DEMO"))).toBeTruthy();
+  const htmlHref = href.replace(/\.pdf$/, ".html").replace("/ts.pdf", "/ts.html");
+  const html = await request.get(htmlHref);
+  expect(html.ok()).toBeTruthy();
+  const text = await html.text();
+  expect(text).toContain('data-page="1"');
+  expect(text).toContain('data-page="2"');
+  expect(text).toContain("Priedas A");
+  expect(text).toContain("ąčęėįšųūž");
 });
 
 test("missing-data branch resumes then issues", async ({ page, request }) => {
