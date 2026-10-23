@@ -28,16 +28,28 @@ Jury walkthrough: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) · A4 leave-behind:
 
 ## Screenshots
 
-After `make demo` (also in the PR walkthrough):
+Final 1920×1080 set (also under `/opt/cursor/artifacts/`). Slide numbers: [docs/PITCH_FACTS.md](docs/PITCH_FACTS.md).
 
-- **Vadovo eilė** — desk HUD, table, engineer inbox
-- **Klientų maketas** — status page: summary, timeline (including Laukia duomenų), SLA date, TS download
-- **Klientas ir stalas** — request in, TS out
-- **Agento sekimas** — LLM / Python / Žmogus overlay and a per-run tool-call timeline
-- **Pristatymas** — ~5 min 10 s autoplay, compact LT/EN bar, restart on the last beat
-- **TS PDF / HTML** — official-looking demo blank + GIS annex (2 pages), DejaVu, ąčęėįšųūž
-- **Analitika** — synthetic month in SQLite: throughput, medians, bottlenecks, SLA risk, A/B/C mix
-- **Integracijos** — five adapter nodes, mock / stub
+| View | File |
+|---|---|
+| Split — customer and desk | ![split](docs/media/01_split_customer_desk.png) |
+| Desk queue | ![desk](docs/media/02_desk_queue.png) |
+| Queue after **Paleisti visas** | ![batch](docs/media/03_queue_after_paleisti_visas.png) |
+| Hero canvas + inspector | ![hero](docs/media/04_hero_canvas_inspector.png) |
+| A / B / C comparison | ![abc](docs/media/05_abc_comparison.png) |
+| Capacity 227.7 + 11 = 238.7 / 320 | ![cap](docs/media/06_capacity.png) |
+| Voltage profile | ![volt](docs/media/07_voltage_profile.png) |
+| TS page 1 | ![ts1](docs/media/08_ts_page_1.png) |
+| TS page 2 — GIS annex | ![ts2](docs/media/09_ts_page_2.png) |
+| Fail reinforcement brief | ![fail](docs/media/10_fail_reinforcement_brief.png) |
+| Gallery taxonomy | ![gal](docs/media/11_gallery_taxonomy.png) |
+| What-if 100 kW | ![whatif](docs/media/12_whatif_100kw.png) |
+| Agento sekimas | ![trace](docs/media/13_agento_sekimas.png) |
+| Integracijos | ![int](docs/media/14_integracijos.png) |
+| Analitika | ![an](docs/media/15_analitika.png) |
+| A4 one-pager | ![one](docs/media/16_onepager.png) |
+
+Backup demo videos (full guided autoplay, ~5 min 10 s, 1920×1080): artifacts `present_autoplay_lt_1920x1080.mp4` and `present_autoplay_en_1920x1080.mp4`. Copies land in `docs/media/` only when each file is under ~25 MB.
 
 ## Pitch in one minute
 
@@ -62,5 +74,6 @@ What-if fill of missing GIS points: **6 / 7** match. History CSV was not tuned.
 - [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md)
 - [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 - [docs/BACKTEST.md](docs/BACKTEST.md)
+- [docs/PITCH_FACTS.md](docs/PITCH_FACTS.md)
 
 Customer names, addresses and meter serials are not in the demo.

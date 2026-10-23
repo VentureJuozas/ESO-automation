@@ -1,5 +1,9 @@
 # Changelog
 
+## Round 10 — Pitch wrap-up
+
+No product-code change. Pitch facts (`docs/PITCH_FACTS.md`), 1920×1080 screenshot set in `docs/media/`, README wiring, and full LT/EN autoplay backup videos as artifacts (repo copies only if each file is under ~25 MB). Capture helper: `scripts/capture_pitch_assets.mjs`.
+
 ## Round 9 — Agento sekimas
 
 Visible LangGraph tool-call trace next to the n8n canvas. Overlay **LLM / Python / Žmogus** colour-codes nodes and edges. Each step lists kind (LLM parse/phrasing, deterministic Python, or human gate), summarised I/O with expandable JSON, duration, provenance tags, and the rule / KNOWLEDGE section. Header: X LLM calls, Y deterministic tools, 1 human gate. One present beat; autoplay stays under 5:15. Playwright asserts the overlay.
