@@ -1,0 +1,9 @@
+.git
+web/node_modules
+web/dist
+__pycache__
+.pytest_cache
+.venv
+data/*.sqlite
+data/substation_12-608/raw
+*.pyc

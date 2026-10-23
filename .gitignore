@@ -1,8 +1,18 @@
 data/substation_12-608/raw/
+data/*.sqlite
+*.sqlite
 
 
 demo/*
 !demo/dashboard.html
 __pycache__/
 *.pyc
+.venv/
+.env
+web/node_modules/
+web/dist/
 
+Playwright artifacts
+web/test-results/
+web/playwright-report/
+web/blob-report/
