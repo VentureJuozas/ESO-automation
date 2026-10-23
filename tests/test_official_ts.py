@@ -16,7 +16,9 @@ def test_official_ts_html_and_pdf_two_pages():
     assert doc["signature"]["action"] == "approve"
     assert doc["sha256"]
     html = render_ts_html(issued)
-    assert LAYOUT_BANNER in html
+    assert "DEMONSTRACINIS" not in html
+    assert "n8n" not in html.lower()
+    assert LAYOUT_BANNER == ""
     assert 'data-page="1"' in html
     assert 'data-page="2"' in html
     assert "Priedas A" in html

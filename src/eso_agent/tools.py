@@ -7,6 +7,7 @@ from line_load import evaluate as evaluate_line
 
 from eso_agent.catalog import tool_by_id
 from eso_agent.cost import estimate_cost as build_cost
+from eso_agent.load_loss import estimate_load_loss
 from eso_agent.brief import build_reinforcement_brief
 from eso_agent.document import REDACTED_ADDRESS, REDACTED_CUSTOMER, build_ts_document
 from eso_agent.llm import llm_mode, parse_request as llm_parse, phrase_ts_offline, phrase_ts_with_llm
@@ -162,29 +163,29 @@ def select_solution_tool(location: dict[str, Any]) -> dict[str, Any]:
     comparison = [
         {
             "id": "A",
-            "title": "Jungti į esamą spintą",
+            "title": "Use existing cabinet",
             "applicable": bool(out["cabinet_at_plot"]),
             "chosen": chosen["id"] == "A",
-            "why": "Sklype jau stovi KS/KAS — keičiamas tik jungiklis (24-88201 analogas).",
-            "why_not": "Artimiausia spinta ne sklype (>" + f"{CABINET_AT_PLOT_M:.0f} m) arba jos nėra.",
+            "why": "A KS/KAS already stands on the plot — replace the breaker only.",
+            "why_not": f"No cabinet on the plot (nearest > {CABINET_AT_PLOT_M:.0f} m).",
             "ts_hint": "Esamoje KS-… pakeisti jungiklį į C NN A.",
         },
         {
             "id": "B",
-            "title": "Nauja KAS ant atramos",
+            "title": "New pole-mounted KAS",
             "applicable": overhead and not out["cabinet_at_plot"],
             "chosen": chosen["id"] == "B",
-            "why": f"Oro linija {out['feeder']}, atrama {out['element_id']} — KAS ant atramos + 16 mm².",
-            "why_not": "Artimiausias elementas nėra oro linijos atrama, arba sklype jau yra spinta.",
+            "why": f"Overhead feeder {out['feeder']}, pole {out['element_id']} — pole KAS + 16 mm².",
+            "why_not": "Nearest element is not an overhead pole, or a cabinet already stands on the plot.",
             "ts_hint": "Ant oro linijos atramos įrengti KAS su C NN A ir 16 mm² kabelį.",
         },
         {
             "id": "C",
-            "title": "Įsipjovimas į kabelį",
+            "title": "Cable cut-in",
             "applicable": cable and not out["cabinet_at_plot"],
             "chosen": chosen["id"] == "C",
-            "why": f"Kabelių linija {out['feeder']} — KS/KAS sklypo riboje, ≥150 mm² iki įsipjovimo.",
-            "why_not": "Oro linija (tinka B) arba esama spinta sklype (tinka A).",
+            "why": f"Cable feeder {out['feeder']} — KS/KAS at the plot boundary, ≥150 mm² to the cut-in.",
+            "why_not": "Overhead feeder (use B) or a cabinet already on the plot (use A).",
             "ts_hint": "Įsipjauti į kabelinę liniją, KS/KAS, saugiklių blokas, perskaičiuoti apsaugas.",
         },
     ]
@@ -196,14 +197,14 @@ def select_solution_tool(location: dict[str, Any]) -> dict[str, Any]:
         card["cost_net"] = cost["net"]
         card["cost_gross"] = cost["gross"]
         card["works"] = {
-            "A": "Jungiklio keitimas esamoje KS/KAS, be naujos spintos.",
-            "B": "KAS ant atramos + 16 mm² nuo oro linijos laidų.",
-            "C": "KS/KAS sklypo riboje, įsipjovimas, ≥150 mm².",
+            "A": "Breaker swap in the existing KS/KAS.",
+            "B": "Pole KAS + 16 mm² service from the overhead wires.",
+            "C": "KS/KAS at the plot boundary, cable cut-in, ≥150 mm².",
         }[sid]
         card["constraints"] = {
-            "A": f"Spinta turi stovėti sklype (≤{CABINET_AT_PLOT_M:.0f} m).",
-            "B": "Tinka tik oro linijai; 16 mm² kainos byloje nėra.",
-            "C": "Radialė ≤80 kW, naujas kabelis ≤600 m, 3 fazės.",
+            "A": f"Cabinet must stand on the plot (≤{CABINET_AT_PLOT_M:.0f} m).",
+            "B": "Overhead feeders only.",
+            "C": "Radial ≤80 kW, new cable ≤600 m, 3-phase.",
         }[sid]
         card["cost_source"] = "real"
     return _annotate({
@@ -366,6 +367,13 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
                 "diversity": round(k_feeder, 4),
                 "fuse_source": feeder["fuse_source"],
             },
+            "load_loss": estimate_load_loss(
+                feeder,
+                connection_id=location["outputs"]["element_id"],
+                added_kw=new_kw,
+                peak_before_kw=peak,
+                peak_after_kw=conservative,
+            ),
         },
         "source_tags": ["rule", "real", "synthetic"],
         "notes": [feeder["fuse_note"], steps["1d_transformer"]["detail"]],
@@ -526,6 +534,13 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
             },
             "profile": _voltage_profile(
                 feeder, added_kw, location["outputs"]["element_id"], used_v
+            ),
+            "load_loss": estimate_load_loss(
+                feeder,
+                connection_id=location["outputs"]["element_id"],
+                added_kw=added_kw,
+                peak_before_kw=STATION["peak_kw"],
+                peak_after_kw=STATION["peak_kw"] + added_kw,
             ),
         },
         "source_tags": [feeder["conductor_source"], "inferred", "rule", used_tag],

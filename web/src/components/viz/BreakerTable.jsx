@@ -1,19 +1,14 @@
-import SourceTags from "../SourceTags.jsx";
-
 export default function BreakerTable({ table = [], selected, requestedKw }) {
   if (!table.length) return null;
   const amps = selected?.amps;
   const phases = selected?.phases || table[0]?.phases || 3;
   return (
     <div className="section">
-      <h3>Jungiklių lentelė · KNOWLEDGE §15</h3>
-      <p className="hint">
-        Prašoma {requestedKw ?? selected?.kw} kW · {phases}F → <b>{selected?.label || `C ${amps} A`}</b>
-      </p>
+      <p className="formula">{requestedKw ?? selected?.kw} kW · {phases}F → {selected?.label || `C ${amps} A`}</p>
       <div className="table-wrap">
         <table className="grid-table">
           <thead>
-            <tr><th>Iki kW</th><th>C, A</th><th>Fazės</th></tr>
+            <tr><th>Up to kW</th><th>C, A</th><th>Phases</th></tr>
           </thead>
           <tbody>
             {table.map((row) => {
@@ -29,7 +24,6 @@ export default function BreakerTable({ table = [], selected, requestedKw }) {
           </tbody>
         </table>
       </div>
-      <p className="map-note">{selected?.note} <SourceTags tags={["rule"]} /></p>
     </div>
   );
 }

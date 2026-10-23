@@ -1,29 +1,28 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { fmtLt } from "../steps.js";
-import SourceTags from "./SourceTags.jsx";
+import { fmtNum } from "../steps.js";
 
 function paper(m, label) {
   const pane = m.getPane("tilePane");
   if (pane) pane.style.background = "#d5e0c6";
   m.attributionControl?.setPrefix("");
-  m.attributionControl?.addAttribution(label || "Offline schema · be plytelių");
+  m.attributionControl?.addAttribution(label || "Offline schema");
 }
 
 function addTiles(m) {
   const offline = document.body?.dataset?.offline === "1" || /offline=1/.test(window.location.search);
   if (offline) {
-    paper(m, "Šaldytas replay · schema be tinklo");
+    paper(m, "Offline schema");
     return;
   }
   const esri = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 19,
-    attribution: "Tiles © Esri · topologija sintetinė",
+    attribution: "Tiles © Esri",
   });
   const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
-    attribution: "© OpenStreetMap · topologija sintetinė",
+    attribution: "© OpenStreetMap",
   });
   esri.addTo(m);
   let swapped = false;
@@ -42,6 +41,10 @@ function addTiles(m) {
   });
 }
 
+function kindLabel(kind) {
+  return kind === "pole" ? "Pole" : kind === "cabinet" ? "Cabinet" : kind || "Point";
+}
+
 function drawMap(el, map, pickable, onPick) {
   if (!el) return null;
   const m = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: !pickable });
@@ -52,7 +55,7 @@ function drawMap(el, map, pickable, onPick) {
   if (sub) {
     L.circleMarker([sub.lat, sub.lon], {
       radius: 13, color: "#111", weight: 3, fillColor: "#ffd166", fillOpacity: 1,
-    }).addTo(m).bindPopup(`<b>TP ${sub.id || "12-608"}</b><br>400 kW · 227,7 kW viršūnė`);
+    }).addTo(m).bindPopup(`<b>TP ${sub.id || "12-608"}</b><br>400 kVA · 227.7 kW peak`);
     L.marker([sub.lat, sub.lon], {
       icon: L.divIcon({ className: "map-label strong", html: "TP 12-608", iconSize: [78, 18], iconAnchor: [-10, 10] }),
       interactive: false,
@@ -71,13 +74,13 @@ function drawMap(el, map, pickable, onPick) {
       weight: selected ? 3 : 2,
       fillColor: selected ? "#ff3b2e" : (colors[pt.feeder] || "#222"),
       fillOpacity: 1,
-    }).addTo(m).bindPopup(`${pt.feeder} · ${pt.kind === "pole" ? "atrama" : "spinta"} ${pt.id}`);
+    }).addTo(m).bindPopup(`${pt.feeder} · ${kindLabel(pt.kind)} ${pt.id}`);
     bounds.push([pt.lat, pt.lon]);
   });
   if (map.request) {
     L.circleMarker([map.request.lat, map.request.lon], {
       radius: 10, color: "#111", weight: 3, fillColor: "#ffe08a", fillOpacity: 1,
-    }).addTo(m).bindPopup("Paraiškos taškas (be adreso)");
+    }).addTo(m).bindPopup("Request");
     bounds.push([map.request.lat, map.request.lon]);
     if (map.selected) {
       L.polyline(
@@ -110,20 +113,17 @@ export default function MapPanel({ map, pickable = false, onPick }) {
       inst.current = null;
     };
   }, [map, pickable, onPick]);
-  if (!map) return <div className="empty">Žemėlapis atsiras paleidus eigą arba pasirinkus tašką.</div>;
+  if (!map) return <div className="empty">No map yet.</div>;
   const sel = map.selected;
   return (
     <div className="section">
-      <h3>Tinklo taškas · L linija · TP 12-608</h3>
       <div className={`map${pickable ? " pickable" : ""}`} ref={ref} />
       <div className="kv" style={{ marginTop: 10 }}>
-        <div><b>Paraiška</b><span>{map.request ? `${map.request.lat}, ${map.request.lon}` : "—"}</span></div>
-        <div><b>Artimiausia</b><span>{sel ? `${sel.kind === "pole" ? "atrama" : "spinta"} ${sel.id}` : "—"}</span></div>
-        <div><b>Atstumas</b><span>{map.distance_m != null ? `${fmtLt(map.distance_m, 1)} m` : "—"}</span></div>
-        <div><b>Linija</b><span>{map.line?.name || sel?.feeder || "—"}</span></div>
+        <div><b>Request</b><span>{map.request ? `${map.request.lat}, ${map.request.lon}` : "—"}</span></div>
+        <div><b>Nearest</b><span>{sel ? `${kindLabel(sel.kind)} ${sel.id}` : "—"}</span></div>
+        <div><b>Distance</b><span>{map.distance_m != null ? `${fmtNum(map.distance_m, 1)} m` : "—"}</span></div>
+        <div><b>Feeder</b><span>{map.line?.name || sel?.feeder || "—"}</span></div>
       </div>
-      {pickable && <p className="hint" style={{ marginTop: 10 }}>Spustelėkite žemėlapį — paraiškos taškas persikels.</p>}
-      <p className="map-note">Atramos ir L-200 geometrija sintetinė. Be klientų adresų. Esri plytelės, gedus — OSM. <SourceTags tags={["synthetic", "real"]} /></p>
     </div>
   );
 }

@@ -1,78 +1,76 @@
 # Architecture
 
-The dashboard is an n8n-style orchestrator over a LangGraph. Deterministic Python makes every engineering decision. The LLM, when a key is present, only parses free text and may rephrase TS §3. An engineer always approves. Queue, runs and audit live in SQLite. A **customer mock** sits beside the manager desk. Five **adapters** hide ESO systems (mock today, stub tomorrow).
+**ESO helper** is a LangGraph orchestrator behind a FastAPI service and an English node-graph dashboard. Deterministic Python makes every engineering decision. The LLM, when a key is present, only parses free text and may rephrase TS §3. An engineer always approves. The only Lithuanian surface is the issued two-page *Prijungimo sąlygos* document.
+
+One case is in scope: 11 kW, 3-phase, TP 12-608, L-200, pole 200/3, solution B.
 
 ```mermaid
 flowchart LR
-  Portal[Klientų maketas] --> CRM[CRM adapter]
-  CRM --> API[FastAPI]
-  UI[Vadovo eilė + n8n drobė] --> API
+  UI[ESO helper] --> API[FastAPI]
   API --> G[LangGraph]
-  G --> T[Deterministic tools]
-  T --> GIS[GIS adapter]
-  T --> CAP[Capacity adapter]
-  T --> PRICE[Pricing adapter]
-  T --> REG[TS registry adapter]
+  G --> T[Python tools]
+  T --> GIS[GIS topology]
+  T --> CAP[Power BI / SCADA]
+  T --> PRICE[Pricing catalogue]
+  T --> REG[TS registry]
+  T --> LL[line_load estimator]
   G --> H[Engineer interrupt]
   H --> UI
-  H --> Portal
+  H --> TS[Lithuanian TS + GIS annex]
 ```
 
 ```mermaid
 flowchart TD
-  parse_request -->|gaps| request_missing_data
   parse_request --> locate_connection_point --> select_solution --> size_breaker
-  size_breaker --> check_capacity
-  check_capacity -->|pass| check_voltage_drop --> check_reliability --> check_future
-  check_future -->|pass| draft_ts_section3 --> estimate_cost --> render_map --> engineer_approval --> issue_ts
-  check_capacity -->|fail| escalate
-  check_voltage_drop -->|fail| escalate
-  check_future -->|fail| escalate
+  size_breaker --> check_capacity --> check_voltage_drop --> check_reliability --> check_future
+  check_future --> draft_ts_section3 --> estimate_cost --> render_map --> engineer_approval --> issue_ts
 ```
 
-## Adapters (production path)
+## Step panels
 
-| Adapter | Mock (today) | Real stub |
-|---|---|---|
-| GIS / topology | Synthetic 12-608 poles and cabinets | ESO GIS + Objects_network_power |
-| Power BI / SCADA | Peak 227.7 kW, 80/90 % | Power BI free-capacity + 15 min SCADA |
-| CRM / portal | SQLite redacted applications | Official savitarna queue |
-| Pricing | 26-E-37934 rates | Tariff methodology / SAP |
-| TS registry | SQLite + SHA-256 | SharePoint document store |
+Every opened step uses the same structure:
 
-`ESO_ADAPTERS=mock` (default). Stubs raise `NotImplementedError` with the target system name. Contract tests keep mock and stub method sets aligned. The **Integracijos** canvas shows each node, mock/stub, what it supplies, and which tool consumes it.
+| Block | Content |
+|---|---|
+| Data source | System, dataset, fields, timestamp (GIS, Power BI/SCADA, CRM, pricing, TS registry) |
+| Requirements and rules | Quoted clause + KNOWLEDGE / SCOPE / standard reference |
+| Calculation | Numbers, formula, gauges, map, A/B/C, breaker table, cost table, load/loss |
+| Result | Pass or fail |
 
-## Customer mock
+Capacity and voltage attach `estimate_load_loss()` from `src/eso_agent/load_loss.py`, which uses `src/line_load.py` tables:
 
-Household form: object, redacted address, kW, phases, map pick. Tracker: gauta → tikrinama → laukia inžinieriaus → išduota. Missing-data letter is answered on the page and resumes the graph. Issued TS downloads as HTML and a minimal PDF. No ESO logo. Banner: demonstracinis maketas.
+- `Psk = ΣP_perm × k(n)`
+- `Isk = Psk / 0.624`
+- `ΔU = L_km × Psk × kU`
+- feeder loss `3 × Isk² × R`
+- transformer loss `P0 + Pk × (S/Sn)²` on 400 kVA
+- energy `P × 8760 × (Psk / Pperm)`
+
+The solution step shows a compact before/after summary of the same estimate.
 
 ## Tool contracts
 
 | Tool | Input | Output | LLM? |
 |---|---|---|---|
-| parse_request | text + form | kw, phases, coords, missing | optional |
-| request_missing_data | gaps | unsent letter, provisional A/B/C | no |
-| locate_connection_point | lat, lon | nearest pole/cabinet via GIS adapter | no |
+| parse_request | text + form | kW, phases, coords | optional |
+| locate_connection_point | lat, lon | nearest pole/cabinet | no |
 | select_solution | feeder type, distance | A / B / C | no |
 | size_breaker | total kW, phases | C n A | no |
-| check_capacity | added kW, capacity adapter | 80/90 %, Isk | no |
-| check_voltage_drop / reliability / future | added kW | V≥207, N-1, reserve | no |
-| draft_ts_section3 | solution + numbers | §3 Lithuanian | optional wording |
-| estimate_cost | pricing adapter | net/gross | no |
-| render_map / escalate / engineer_approval / issue_ts | — | map, brief, interrupt, registry | no |
+| check_capacity | added kW + load | 80/90 %, load/loss | no |
+| check_voltage_drop | added kW + feeder | V ≥ 207, profile, load/loss | no |
+| check_reliability / future | location, solution | N-1, headroom | no |
+| draft_ts_section3 | solution + numbers | Lithuanian §3 | optional wording |
+| estimate_cost / render_map | pricing / GIS | net/gross, annex | no |
+| engineer_approval / issue_ts | decision | audit, 2-page TS | no |
 
-## LLM vs Python
+## LLM vs Python vs human
 
-Python decides. LLM only parses text and may rephrase §3. Offline if no key.
+Python decides. LLM only parses text and may rephrase §3. Offline if no key. The trace overlay colour-codes LLM (amber), Python (teal) and Human (coral). `/api/runs/{id}/trace` returns the same payload.
 
-## Agento sekimas
+## Data and persistence
 
-For a selected run the n8n canvas can show an **LLM / Python / Žmogus** overlay. Nodes and edges are colour-coded by kind. A trace timeline lists each tool call: step, name, kind (LLM parse/phrasing, deterministic Python, or human gate), summarised inputs/outputs with expandable JSON, duration, provenance tags, and the rule / KNOWLEDGE section. Header: `X LLM kvietimai · Y deterministiniai įrankiai · 1 žmogaus vartai`. `/api/runs/{id}/trace` returns the same payload.
+Adapters (GIS, capacity, CRM, pricing, registry) still sit behind the tools. Their contracts and fixture tags live in the docs, not in the dashboard. Runs and the SHA-256 audit persist in SQLite.
 
-## Provenance, approval, queue, back-test
+## Out of the product UI
 
-`real` | `rule` | `inferred` | `synthetic`. Interrupt at approval or escalate or waiting_data. Gallery in-scope 95 %, overall 84 %, tool errors 0. What-if fill 6/7.
-
-## Presentation
-
-**Pristatymas**: frozen beats, LT/EN, arrows, per-beat autoplay (~5 min, under 5:15) with pause. Split beat shows customer mock + desk. **Agento sekimas** beat turns on the kind overlay. Integracijos / Analitika follow. A4 leave-behind at `/api/onepager.html`.
+Scenario pickers, the 12-case queue, history gallery, customer split view, presentation autoplay, what-if, and time-saved HUD are not part of the dashboard. Backend endpoints for those experiments may still exist; they are not the product.

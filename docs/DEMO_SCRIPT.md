@@ -1,36 +1,33 @@
-# Demo script — ~5 minutes
+# Demo script — ESO helper
 
-Stage: `make demo`. Open http://127.0.0.1:8000. Click **Pristatymas**. Autoplay is **~5 min 10 s** with a hold on the split beat. **Pauzė** / space to pause. The compact bar has an obvious **LT / EN** switch. Last beat ends with **Iš naujo**. Arrow keys still work. The TS stays Lithuanian.
+Stage: `make demo`. Open http://127.0.0.1:8000. The product is one case.
 
-The path is a **frozen replay**. Leave-behind: `/api/onepager.html` (screen + print) and `/api/onepager.pdf`. Issued TS: two A4 pages — official-looking demo blank + GIS annex.
+The UI is English. The issued TS stays Lithuanian.
 
-| Time | Beat | Dwell | Key |
-|---|---|---|---|
-| 0:00 | Split | 20 s | Customer mock on the left, desk on the right. Minutes, not days. |
-| 0:20 | Desk HUD | 5 s | Twelve redacted 12-608 cases. SLA three working days. |
-| 0:25 | Paleisti visas | 25 s | Frozen statuses flip. Python decides. |
-| 0:50 | Inbox | 25 s | Approve / edit §3 / override. Waiting-for-data cards sit here too. |
-| 1:15 | Hero map | 20 s | 11 kW, pole 200/3. Paper map if tiles fail. |
-| 1:35 | Solution B | 15 s | Overhead, no cabinet → new KAS. |
-| 1:50 | Capacity | 15 s | 227.7 + 11 vs 320 kW. |
-| 2:05 | TS §3 | 20 s | Lithuanian wording. Engineer signs. |
-| 2:25 | Fail brief | 25 s | 100 kW → 327.7 vs 320. Reinforcement pack. |
-| 2:50 | Gallery | 30 s | In-scope 95 %, overall 84 %. Taxonomy. 26-E-37934 is (a). |
-| 3:20 | Audit | 20 s | SHA-256, SQLite. |
-| 3:40 | Agento sekimas | 18 s | Overlay: LLM reads/phrases, Python decides, human signs. Trace next to the canvas. |
-| 3:58 | Integracijos | 20 s | Five adapters, all mock. Stubs name the ESO systems. |
-| 4:18 | Analitika | 22 s | Synthetic month: throughput, medians, bottlenecks, SLA risk, A/B/C mix. Hours saved are an assumption. |
-| 4:40 | Time saved | 30 s | Replay ms vs 2–4 h assumption. Ends clean; **Iš naujo**. |
+## Path
 
-## Live extras (if asked)
+1. **Request bar** — 11 kW, 3-phase, TP 12-608, L-200, pole 200/3, solution B · C 20 A.
+2. **Run** — the node graph walks Application → Connection point → Checks → Solution → Issue.
+3. **Sidebar** — five dropdown groups. Click a step to open its panel.
+4. **Capacity** — transformer 227.7 + 11 = 238.7 kW vs 320 kW (80 %). Load and loss estimator: line A and %, voltage drop to 200/3, feeder and transformer kW / kWh/year.
+5. **Voltage** — profile vs 207 V (LST EN 50160). Same estimator, segment table to the customer.
+6. **Solution** — A rejected (no cabinet), B selected (overhead pole KAS), C not applicable. Compact load/loss summary. Breaker C 20 A. Cost from the 26-E-37934 sheet.
+7. **Engineer** — review §3, open the audit, **Approve and issue**.
+8. **Prijungimo sąlygų dokumentas** — two A4 pages, GIS annex, HTML and PDF.
 
-- **Agento sekimas:** sidebar or the canvas button **LLM / Python / Žmogus**. Timeline of every tool call, expandable JSON, rule refs.
-- **Official TS:** after approve, open the HTML/PDF. Page 1 is the demo blank (26-E-DEMO-…, parties, parameters, conditions, cost, signatures). Page 2 is the GIS annex. No ESO logo.
-- **Analitika** in the sidebar: same charts as the present beat. Banner says synthetic.
-- **What-if bar** on a case: drag 11 → 100 kW. Capacity fails, the canvas branch switches to escalate.
-- **Missing data:** open a `Laukia duomenų` row. The graph stopped at `request_missing_data`. Letter preview is not sent. Supply coords → the graph resumes on the same canvas.
-- **What-if fill** in the gallery: of the 7 missing-input files, **6** become matches when the issued TS point is added as virtual GIS. 22-26356 stays an engineer-judgment miss (historical TR swap). This is labelled what-if, not the live score.
+## Trace
 
-**Atstatyti demo** if you need a clean desk after the live extras.
+**Trace** or **LLM / Python / Human** on the canvas. Amber = LLM parse/phrase. Teal = Python. Coral = engineer gate.
 
-Slide numbers, tags and mock-vs-real: [docs/PITCH_FACTS.md](PITCH_FACTS.md). Stage-backup videos: `docs/media/present_autoplay_lt_1920x1080.mp4` and `docs/media/present_autoplay_en_1920x1080.mp4`.
+## Numbers to say
+
+| Item | Value |
+|---|---|
+| Peak → after | 227.7 → 238.7 kW |
+| 80 % / 90 % | 320 / 360 kW on 400 kVA |
+| Voltage floor | 207 V |
+| Point | pole 200/3 on L-200 |
+| Solution / breaker | B / C 20 A |
+| Cost (orientyras) | 1 786.89 € net / 2 162.14 € gross |
+
+Do not quote hours saved, monthly extrapolations, or what-if scores. Fixture tags (real / rule / inferred / synthetic) stay in [PITCH_FACTS.md](PITCH_FACTS.md).

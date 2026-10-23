@@ -1,25 +1,39 @@
 export const GROUPS = [
-  { id: "paraiska", title: "Paraiška", hue: "#ff6d5a", icon: "doc", tools: ["parse_request"] },
-  { id: "taskas", title: "Taškas", hue: "#3b82f6", icon: "pin", tools: ["locate_connection_point"] },
-  { id: "patikros", title: "Patikros", hue: "#7c5cfc", icon: "grid", tools: ["check_capacity", "check_voltage_drop", "check_reliability", "check_future"] },
-  { id: "sprendinys", title: "Sprendinys", hue: "#d97706", icon: "branch", tools: ["select_solution", "size_breaker"] },
-  { id: "isdavimas", title: "Išdavimas", hue: "#0f766e", icon: "send", tools: ["draft_ts_section3", "estimate_cost", "render_map", "engineer_approval", "issue_ts", "escalate"] },
+  { id: "application", title: "Application", hue: "#ff6d5a", icon: "doc", tools: ["parse_request"] },
+  { id: "connection", title: "Connection point", hue: "#3b82f6", icon: "pin", tools: ["locate_connection_point", "render_map"] },
+  { id: "checks", title: "Checks", hue: "#7c5cfc", icon: "grid", tools: ["check_capacity", "check_voltage_drop", "check_reliability", "check_future"] },
+  { id: "solution", title: "Solution", hue: "#d97706", icon: "branch", tools: ["select_solution", "size_breaker", "estimate_cost"] },
+  { id: "issue", title: "Issue", hue: "#0f766e", icon: "send", tools: ["draft_ts_section3", "engineer_approval", "issue_ts"] },
 ];
+
+export const STEP_LABEL = {
+  parse_request: "Read application",
+  locate_connection_point: "Locate point",
+  render_map: "Map",
+  check_capacity: "Capacity",
+  check_voltage_drop: "Voltage",
+  check_reliability: "Reliability",
+  check_future: "Future load",
+  select_solution: "Solution A/B/C",
+  size_breaker: "Breaker",
+  estimate_cost: "Cost",
+  draft_ts_section3: "Draft §3",
+  engineer_approval: "Engineer",
+  issue_ts: "Issue TS",
+};
 
 export function groupOf(tool) {
   return GROUPS.find((g) => g.tools.includes(tool)) || GROUPS[0];
 }
 
-export function fmtLt(n, digits = 1) {
+export function fmtNum(n, digits = 1) {
   if (n == null || Number.isNaN(n)) return "—";
-  return Number(n).toLocaleString("lt-LT", { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  return Number(n).toLocaleString("en-GB", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 }
 
 export function fmtEur(n) {
-  if (n == null) return "kaina nenurodyta";
-  return Number(n).toLocaleString("lt-LT", { style: "currency", currency: "EUR" });
+  if (n == null) return "—";
+  return Number(n).toLocaleString("en-GB", { style: "currency", currency: "EUR" });
 }
 
-export function sourceLabel(tag) {
-  return { real: "išmatuota", rule: "taisyklė", inferred: "išvesta", synthetic: "sintetinis" }[tag] || tag;
-}
+export const fmtLt = fmtNum;

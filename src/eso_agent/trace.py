@@ -5,11 +5,11 @@ from typing import Any
 
 from eso_agent.catalog import TOOLS, tool_by_id
 
-KIND_LT = {"llm": "LLM", "tool": "Python", "human": "Žmogus"}
+KIND_LT = {"llm": "LLM", "tool": "Python", "human": "Human"}
 KIND_HINT = {
-    "llm": "Skaito paraišką arba formuluoja §3. Inžinerijos nesprendžia.",
-    "tool": "Deterministinė taisyklė. Python priima sprendimą.",
-    "human": "Žmogaus vartai. Be parašo TS neišduodama.",
+    "llm": "Reads the request or phrases §3.",
+    "tool": "Deterministic rule.",
+    "human": "Engineer gate.",
 }
 
 
@@ -36,7 +36,7 @@ def _summarise(payload: Any, limit: int = 180) -> str:
     if isinstance(payload, (int, float, bool)):
         return str(payload)
     if isinstance(payload, list):
-        return f"{len(payload)} įrašai"
+        return f"{len(payload)} items"
     if isinstance(payload, dict):
         keys = ("kw", "phases", "id", "label", "feeder", "element_id", "ts_number", "pass", "escalate", "section3")
         bits = []
@@ -56,10 +56,10 @@ def _summarise(payload: Any, limit: int = 180) -> str:
 
 def _llm_role(tool_id: str) -> str:
     if tool_id == "parse_request":
-        return "skaitymas"
+        return "parse"
     if tool_id == "draft_ts_section3":
-        return "formulavimas"
-    return "tekstas"
+        return "phrase"
+    return "text"
 
 
 def build_trace(snap: dict[str, Any] | None = None, events: list[dict[str, Any]] | None = None) -> dict[str, Any]:
@@ -110,12 +110,12 @@ def build_trace(snap: dict[str, Any] | None = None, events: list[dict[str, Any]]
             "llm": llm,
             "python": python,
             "human": human,
-            "line": f"{llm} LLM kvietimai · {python} deterministiniai įrankiai · {human} žmogaus vartai",
+            "line": f"{llm} LLM · {python} Python · {human} Human",
         },
         "legend": [
             {"id": "llm", "label": "LLM", "hint": KIND_HINT["llm"]},
             {"id": "tool", "label": "Python", "hint": KIND_HINT["tool"]},
-            {"id": "human", "label": "Žmogus", "hint": KIND_HINT["human"]},
+            {"id": "human", "label": "Human", "hint": KIND_HINT["human"]},
         ],
         "catalog": [{"id": t["id"], "kind": t.get("kind") or "tool"} for t in TOOLS],
     }

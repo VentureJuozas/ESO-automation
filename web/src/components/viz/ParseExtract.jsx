@@ -1,14 +1,12 @@
-import SourceTags from "../SourceTags.jsx";
-
-const FIELD_LT = {
-  kw: "Galia",
-  phases: "Fazės",
-  coords: "Koordinatės",
-  object_name: "Objektas",
+const FIELD = {
+  kw: "Power",
+  phases: "Phases",
+  coords: "Coordinates",
+  object_name: "Object",
 };
 
 function highlight(text, highlights = []) {
-  if (!text) return <span className="muted">Nėra šaltinio teksto — skaityta iš formos.</span>;
+  if (!text) return <span className="muted">Form values.</span>;
   const marks = [...highlights]
     .filter((h) => h.start != null && h.end != null && h.start < h.end)
     .sort((a, b) => a.start - b.start);
@@ -19,7 +17,7 @@ function highlight(text, highlights = []) {
     const end = Math.min(text.length, h.end);
     if (start > cursor) out.push(<span key={`t${i}`}>{text.slice(cursor, start)}</span>);
     if (end > start) {
-      out.push(<mark key={`m${i}`} data-field={h.field} title={FIELD_LT[h.field] || h.field}>{text.slice(start, end)}</mark>);
+      out.push(<mark key={`m${i}`} data-field={h.field} title={FIELD[h.field] || h.field}>{text.slice(start, end)}</mark>);
       cursor = end;
     }
   });
@@ -32,10 +30,8 @@ export default function ParseExtract({ outputs }) {
   const parsed = outputs.parsed || {};
   const extraction = outputs.extraction || {};
   const highlights = outputs.highlights || [];
-  const fields = Object.values(extraction);
   return (
     <div className="section">
-      <h3>Išskaityti laukai</h3>
       <div className="extract-grid">
         {["kw", "phases", "coords", "object_name"].map((key) => {
           const hit = extraction[key];
@@ -45,21 +41,15 @@ export default function ParseExtract({ outputs }) {
           const conf = hit?.confidence ?? (hit ? 0.5 : 0);
           return (
             <div key={key} className="extract-card">
-              <b>{FIELD_LT[key] || key}</b>
+              <b>{FIELD[key]}</b>
               <span>{value ?? "—"}</span>
               <i style={{ width: `${Math.round(conf * 100)}%` }} />
-              <small>{hit ? `${hit.source} · ${Math.round(conf * 100)} %` : "nėra"}</small>
+              <small>{hit ? `${Math.round(conf * 100)} %` : "—"}</small>
             </div>
           );
         })}
       </div>
-      <h3>Šaltinio tekstas</h3>
       <pre className="source-text">{highlight(outputs.source_text || parsed.source_text, highlights)}</pre>
-      {fields.length === 0 && <p className="map-note">Offline parseris naudojo formos reikšmes.</p>}
-      <p className="map-note">
-        Klientas: {outputs.customer_placeholder}. {outputs.address_placeholder}
-        <SourceTags tags={["synthetic", parsed.source_tags].flat()} />
-      </p>
     </div>
   );
 }
