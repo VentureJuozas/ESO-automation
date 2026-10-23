@@ -30,7 +30,10 @@ A household 0.4 kV connection on TP **12-608** still takes an engineer through G
 | Solution | **B** (new KAS on pole + 16 mm²) | `select_solution` | `rule` |
 | Breaker | **3F C 20 A** | §15 table, 11 kW 3F | `rule` |
 | Voltage after (tool) | **224.0 V** | `quality.voltage_after_v` | `inferred` |
-| Voltage at 200/3 after | **222.5 V** | `quality.profile` | `inferred` |
+| Voltage at 200/3 after | **224.0 V** | `quality.profile` and load/loss span TP → 200/3 | `inferred` |
+| L-200 meter peak | **79.3 kW** | `network.FEEDERS["L-200"]["meter_max_kw"]` | `real` |
+| Feeder current after | **144.7 A** | (79.3 + 11) / 0.624 | `inferred` |
+| Line loading after | **90.4 %** of 160 A | 144.7 / 160 | `inferred` |
 | Limit | **207 V** (230 − 10 %) | LST EN 50160 | `rule` |
 | Cost net / gross | **1 786.89 / 2 162.14 €** | `estimate_cost` | `inferred` |
 | SLA | **3 working days** | household deadline ≤ 250 kW | `rule` |
@@ -41,13 +44,16 @@ From `src/eso_agent/load_loss.py` using `src/line_load.py` (2018 calculator).
 
 | Fact | Formula | Tag |
 |---|---|---|
-| Diversified power | `Psk = ΣP_perm × k(n)` | `rule` |
-| Diversified current | `Isk = Psk / 0.624` | `rule` |
-| Voltage drop | `ΔU = L_km × Psk × kU` | `rule` |
-| Feeder loss | `3 × Isk² × R` | `rule` |
+| Feeder peak (thermal) | L-200 `meter_max_kw`, not the TP 227.7 kW total | `real` |
+| Feeder current | `I = P_feeder / 0.624` | `rule` |
+| Voltage drop | `ΔU = L_km × Psk × kU` with `Psk = ΣP_perm × k(n)` | `rule` |
+| Feeder loss | `3 × I² × R`, `R = r_Ω/km × L_km` on TP → customer | `rule` |
 | Transformer loss | `P0 + Pk × (S/Sn)²` · P0 0.93 kW, Pk 4.60 kW, Sn 400 kVA | `rule` |
-| Annual energy | `P × 8760 × (Psk / Pperm)` | `inferred` |
+| Annual energy | `P_peak × 8760 × (0.3 LF + 0.7 LF²)` | `rule` |
+| Line loading | Pass only if every segment ≤ 100 % of ampacity | `rule` |
 | 4A-50 ampacity | **160 A** | `rule` |
+| Hero feeder loss | **2.738 → 3.570 kW** · **2 808 kWh/year** on TP → 200/3 | `inferred` |
+| Hero transformer loss | **2.421 → 2.568 kW** | `inferred` |
 
 ## LLM / Python / human
 

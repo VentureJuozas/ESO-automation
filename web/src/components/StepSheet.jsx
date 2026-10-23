@@ -11,10 +11,14 @@ import LoadLoss from "./LoadLoss.jsx";
 import { BRIEFINGS } from "../briefings.js";
 import { STEP_LABEL } from "../steps.js";
 
-function resultOf(ev, running, status) {
+function resultOf(ev, running, status, loadLoss) {
   if (running) return { kind: "run", label: "Running" };
   if (!ev) return { kind: "idle", label: "Idle" };
   if (ev.tool === "engineer_approval" && ev.type === "interrupt") return { kind: "wait", label: "Awaiting signature" };
+  const own = ev.outputs?.load_loss;
+  const shared = ["check_capacity", "check_voltage_drop", "select_solution"].includes(ev.tool) ? loadLoss : null;
+  const loading = (own || shared)?.line_loading;
+  if (loading?.pass === false) return { kind: "fail", label: "Fail" };
   if (ev.outputs?.escalate || ev.outputs?.pass === false) return { kind: "fail", label: "Fail" };
   if (ev.ok === false) return { kind: "fail", label: "Fail" };
   return { kind: "pass", label: "Pass" };
@@ -88,7 +92,7 @@ export default function StepSheet({
 }) {
   const brief = BRIEFINGS[toolId] || {};
   const title = STEP_LABEL[toolId] || toolId;
-  const result = resultOf(event, running, status);
+  const result = resultOf(event, running, status, loadLoss);
 
   if (error) {
     return (

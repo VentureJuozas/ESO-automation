@@ -267,6 +267,17 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
     trafo_ok = conservative <= limit80
     trafo90_ok = conservative <= limit90
 
+    load_loss = estimate_load_loss(
+        feeder,
+        connection_id=location["outputs"]["element_id"],
+        added_kw=new_kw,
+        peak_before_kw=peak,
+        peak_after_kw=conservative,
+    )
+    line_ok = bool(load_loss["line_loading"]["pass"])
+    line = load_loss["line"]
+    loading = load_loss["line_loading"]
+
     steps = {
         "1a_breaker": {
             "pass": True,
@@ -305,6 +316,21 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
             "limit_90_kw": limit90,
             "share_of_nominal": round(conservative / STATION["nominal_kw"], 3),
         },
+        "1e_line_loading": {
+            "pass": line_ok,
+            "detail": (
+                f"{feeder['name']} meter peak {line['before']['p_kw']} → {line['after']['p_kw']} kW, "
+                f"I = P / 0.624 = {line['before']['isk_a']} → {line['after']['isk_a']} A, "
+                f"{line['after']['load_pct']}% of {load_loss['ampacity_a']} A "
+                f"(max segment {loading['max_after_pct']}%)."
+            ),
+            "source": "real",
+            "i_before_a": line["before"]["isk_a"],
+            "i_after_a": line["after"]["isk_a"],
+            "load_pct": line["after"]["load_pct"],
+            "max_after_pct": loading["max_after_pct"],
+            "ampacity_a": load_loss["ampacity_a"],
+        },
     }
     failed = [k for k, v in steps.items() if not v["pass"]]
     reason = None
@@ -333,6 +359,13 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
     elif not cabinet_ok:
         escalate = True
         reason = "Spintos saugiklis mažesnis už naują jungiklį."
+    if not line_ok:
+        escalate = True
+        line_reason = (
+            f"Line loading {loading['max_after_pct']}% exceeds 100% of {load_loss['ampacity_a']} A. "
+            "Needs engineer / line reinforcement (4 pakopa)."
+        )
+        reason = f"{reason} {line_reason}".strip() if reason else line_reason
 
     return _annotate({
         "tool": "check_capacity",
@@ -367,13 +400,8 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
                 "diversity": round(k_feeder, 4),
                 "fuse_source": feeder["fuse_source"],
             },
-            "load_loss": estimate_load_loss(
-                feeder,
-                connection_id=location["outputs"]["element_id"],
-                added_kw=new_kw,
-                peak_before_kw=peak,
-                peak_after_kw=conservative,
-            ),
+            "load_loss": load_loss,
+            "line_loading": loading,
         },
         "source_tags": ["rule", "real", "synthetic"],
         "notes": [feeder["fuse_note"], steps["1d_transformer"]["detail"]],
@@ -381,59 +409,29 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
     })
 
 
-def _voltage_profile(feeder: dict[str, Any], new_kw: float, connection_id: str, baseline_v: float) -> list[dict[str, Any]]:
-    """Synthetic path along feeder elements; tagged inferred/synthetic in the parent tool."""
-    net = load_network()
-    els = [e for e in net["elements"] if e["feeder"] == feeder["name"]]
-    els.sort(key=lambda e: haversine_m(STATION["lat"], STATION["lon"], e["lat"], e["lon"]))
-    if not els:
-        return [
-            {"m": 0, "label": "TP 12-608", "v_before": baseline_v, "v_after": baseline_v, "kind": "station"},
-            {"m": 50, "label": connection_id, "v_before": baseline_v, "v_after": baseline_v, "kind": "connection"},
-        ]
-    n = len(els)
-    kw_each = feeder["permitted_kw"] / n
-    houses_each = max(1, feeder["points"] // n)
-    segs_before, segs_after = [], []
-    prev_lat, prev_lon = STATION["lat"], STATION["lon"]
-    for i, el in enumerate(els):
-        dist = max(8.0, haversine_m(prev_lat, prev_lon, el["lat"], el["lon"]))
-        extra_kw = new_kw if el["id"] == connection_id else 0.0
-        extra_h = 1 if el["id"] == connection_id else 0
-        segs_before.append(
-            {"conductor": feeder["conductor"], "length_m": dist, "permitted_kw": kw_each, "houses": houses_each}
+def _voltage_profile(load_loss: dict[str, Any], baseline_v: float, connection_id: str) -> list[dict[str, Any]]:
+    """TP → customer using the same evaluate() span as the Voltage step and estimator."""
+    used = float(baseline_v)
+    points = [
+        {"m": 0, "label": "TP 12-608", "v_before": round(used, 1), "v_after": round(used, 1), "kind": "station"}
+    ]
+    scale = used / 230.0 if used else 1.0
+    rows = load_loss.get("to_customer") or []
+    if not rows:
+        points.append(
+            {"m": 50, "label": connection_id, "v_before": round(used, 1), "v_after": round(used, 1), "kind": "connection"}
         )
-        segs_after.append(
-            {
-                "conductor": feeder["conductor"],
-                "length_m": dist,
-                "permitted_kw": kw_each + extra_kw,
-                "houses": houses_each + extra_h,
-            }
-        )
-        prev_lat, prev_lon = el["lat"], el["lon"]
-    try:
-        before = evaluate_line(segs_before, transformer_kva=400, method="new")
-        after = evaluate_line(segs_after, transformer_kva=400, method="new")
-    except Exception:
-        return [
-            {"m": 0, "label": "TP 12-608", "v_before": baseline_v, "v_after": baseline_v, "kind": "station"},
-        ]
-    points = [{"m": 0, "label": "TP 12-608", "v_before": round(baseline_v, 1), "v_after": round(baseline_v, 1), "kind": "station"}]
-    cum = 0.0
-    drop_b = 0.0
-    drop_a = 0.0
-    for i, el in enumerate(els):
-        cum += segs_before[i]["length_m"]
-        drop_b += before["segments"][i]["voltage_drop"]
-        drop_a += after["segments"][i]["voltage_drop"]
+        return points
+    for seg in rows:
+        vb = seg.get("v_before")
+        va = seg.get("v_after")
         points.append(
             {
-                "m": round(cum, 1),
-                "label": el["id"],
-                "v_before": round(baseline_v * (1 - drop_b / 100.0), 1),
-                "v_after": round(baseline_v * (1 - drop_a / 100.0), 1),
-                "kind": "connection" if el["id"] == connection_id else el["kind"],
+                "m": seg["m"],
+                "label": seg["id"],
+                "v_before": round(vb * scale, 1) if vb is not None else None,
+                "v_after": round(va * scale, 1) if va is not None else None,
+                "kind": "connection" if seg["id"] == connection_id else seg.get("kind") or "pole",
             }
         )
     return points
@@ -441,10 +439,17 @@ def _voltage_profile(feeder: dict[str, Any], new_kw: float, connection_id: str, 
 
 def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solution: dict[str, Any]) -> dict[str, Any]:
     feeder = location["outputs"]["feeder_record"]
-    length_m = max(5.0, location["outputs"]["element_to_station_m"])
     conductor = feeder["conductor"]
-    houses = feeder["points"] + 1
     added_kw = added_demand_kw(parsed["kw"], parsed.get("existing_kw") or 0)
+    load_loss = estimate_load_loss(
+        feeder,
+        connection_id=location["outputs"]["element_id"],
+        added_kw=added_kw,
+        peak_before_kw=STATION["peak_kw"],
+        peak_after_kw=STATION["peak_kw"] + added_kw,
+    )
+    length_m = max(5.0, float(load_loss["voltage"]["length_m"]))
+    houses = feeder["points"] + 1
     permitted = feeder["permitted_kw"] + added_kw
     segments = [
         {
@@ -468,6 +473,7 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
     baseline_note = baseline_info["note"]
     v_after = used_v * (1 - after["voltage_drop_pct"] / 100.0)
     v_ok = v_after >= VOLTAGE_MIN_V
+    line_ok = bool(load_loss["line_loading"]["pass"])
 
     stub_m = location["outputs"]["distance_m"]
     new_cable_m = stub_m if solution["outputs"]["id"] in {"B", "C"} else 0.0
@@ -493,6 +499,10 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
         )
     if not rule_2c["length_ok"]:
         failed_reasons.append(f"Naujo kabelio ilgis {new_cable_m:.0f} m > {NEW_CABLE_MAX_M} m.")
+    if not line_ok:
+        failed_reasons.append(
+            f"Line loading {load_loss['line_loading']['max_after_pct']}% exceeds 100% of {load_loss['ampacity_a']} A."
+        )
 
     escalate = bool(failed_reasons)
     reason = " ".join(failed_reasons) if failed_reasons else None
@@ -532,16 +542,9 @@ def check_voltage_drop(parsed: dict[str, Any], location: dict[str, Any], solutio
                 "isk_a": round(after["isk_a"], 1),
                 "permitted_kw": after["permitted_kw"],
             },
-            "profile": _voltage_profile(
-                feeder, added_kw, location["outputs"]["element_id"], used_v
-            ),
-            "load_loss": estimate_load_loss(
-                feeder,
-                connection_id=location["outputs"]["element_id"],
-                added_kw=added_kw,
-                peak_before_kw=STATION["peak_kw"],
-                peak_after_kw=STATION["peak_kw"] + added_kw,
-            ),
+            "profile": _voltage_profile(load_loss, used_v, location["outputs"]["element_id"]),
+            "load_loss": load_loss,
+            "line_loading": load_loss["line_loading"],
         },
         "source_tags": [feeder["conductor_source"], "inferred", "rule", used_tag],
         "notes": [

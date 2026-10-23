@@ -45,8 +45,8 @@ export const BRIEFINGS = {
       timestamp: "2026-02-06 19:15 UTC",
     },
     rule: {
-      quote: "Transformer loading after connection must stay ≤ 80 % of nameplate (320 kW on 400 kVA). 90 % is the hard stop.",
-      ref: "SCOPE 1d · Substations_info",
+      quote: "Transformer loading after connection must stay ≤ 80 % of nameplate (320 kW on 400 kVA). 90 % is the hard stop. Line loading must stay ≤ 100 % of conductor ampacity.",
+      ref: "SCOPE 1d · Substations_info · 1e line loading",
     },
   },
   check_voltage_drop: {
@@ -57,8 +57,8 @@ export const BRIEFINGS = {
       timestamp: "calculator tables in src/line_load.py",
     },
     rule: {
-      quote: "Supply voltage must remain ≥ 207 V (230 V − 10 %, LST EN 50160).",
-      ref: "LST EN 50160 · KNOWLEDGE voltage quality",
+      quote: "Supply voltage must remain ≥ 207 V (230 V − 10 %, LST EN 50160). Conductor loading must stay ≤ 100 % of ampacity.",
+      ref: "LST EN 50160 · KNOWLEDGE voltage quality · line loading",
     },
   },
   check_reliability: {
