@@ -15,6 +15,7 @@ const { chromium } = require("@playwright/test");
 const BASE = process.env.ESO_BASE || "http://127.0.0.1:8000";
 const ART = "/opt/cursor/artifacts";
 const MEDIA = path.resolve("docs/media");
+const VIDEO_TMP = "/tmp/eso-videos";
 const VIEW = { width: 1920, height: 1080 };
 const SETTLE = 700;
 
@@ -135,6 +136,7 @@ async function captureStills(browser) {
 }
 
 async function recordAutoplay(browser, lang, rawWebm) {
+  fs.mkdirSync(path.dirname(rawWebm), { recursive: true });
   const context = await browser.newContext({
     viewport: VIEW,
     deviceScaleFactor: 1,
@@ -210,7 +212,7 @@ try {
   }
   if (mode === "all" || mode === "videos") {
     for (const lang of ["lt", "en"]) {
-      const raw = path.join(ART, `present_autoplay_${lang}.webm`);
+      const raw = path.join(VIDEO_TMP, `present_autoplay_${lang}.webm`);
       const mp4 = path.join(ART, `present_autoplay_${lang}_1920x1080.mp4`);
       console.log("autoplay", lang);
       await recordAutoplay(browser, lang, raw);

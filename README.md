@@ -49,7 +49,12 @@ Final 1920×1080 set (also under `/opt/cursor/artifacts/`). Slide numbers: [docs
 | Analitika | ![an](docs/media/15_analitika.png) |
 | A4 one-pager | ![one](docs/media/16_onepager.png) |
 
-Backup demo videos (full guided autoplay, ~5 min 10 s, 1920×1080): artifacts `present_autoplay_lt_1920x1080.mp4` and `present_autoplay_en_1920x1080.mp4`. Copies land in `docs/media/` only when each file is under ~25 MB.
+Backup demo videos — full guided autoplay, ~5 min 10 s, 1920×1080:
+
+- [LT](docs/media/present_autoplay_lt_1920x1080.mp4)
+- [EN](docs/media/present_autoplay_en_1920x1080.mp4)
+
+Same files are also under `/opt/cursor/artifacts/`.
 
 ## Pitch in one minute
 

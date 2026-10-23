@@ -32,3 +32,5 @@ The path is a **frozen replay**. Leave-behind: `/api/onepager.html` (screen + pr
 - **What-if fill** in the gallery: of the 7 missing-input files, **6** become matches when the issued TS point is added as virtual GIS. 22-26356 stays an engineer-judgment miss (historical TR swap). This is labelled what-if, not the live score.
 
 **Atstatyti demo** if you need a clean desk after the live extras.
+
+Slide numbers, tags and mock-vs-real: [docs/PITCH_FACTS.md](PITCH_FACTS.md). Stage-backup videos: `docs/media/present_autoplay_lt_1920x1080.mp4` and `docs/media/present_autoplay_en_1920x1080.mp4`.

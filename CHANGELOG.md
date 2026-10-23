@@ -2,7 +2,7 @@
 
 ## Round 10 — Pitch wrap-up
 
-No product-code change. Pitch facts (`docs/PITCH_FACTS.md`), 1920×1080 screenshot set in `docs/media/`, README wiring, and full LT/EN autoplay backup videos as artifacts (repo copies only if each file is under ~25 MB). Capture helper: `scripts/capture_pitch_assets.mjs`.
+No product-code change. Pitch facts (`docs/PITCH_FACTS.md`), 1920×1080 screenshot set in `docs/media/`, README wiring, and full LT/EN autoplay backup videos (~5 min 10 s, under 25 MB each) in `docs/media/` and artifacts. Capture helper: `scripts/capture_pitch_assets.mjs`.
 
 ## Round 9 — Agento sekimas
 
