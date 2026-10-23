@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -15,7 +16,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from eso_agent.audit import build_audit, render_audit_html  # noqa: E402
 from eso_agent.backtest import gallery_index, run_gallery, run_gallery_whatif  # noqa: E402
-from eso_agent.brief import render_brief_html  # noqa: E402
+from eso_agent.brief import brief_pdf_bytes, render_brief_html  # noqa: E402
 from eso_agent.catalog import architecture_payload  # noqa: E402
 from eso_agent.document import render_ts_html  # noqa: E402
 from eso_agent.engine import (  # noqa: E402
@@ -41,15 +42,16 @@ from eso_agent.llm import llm_mode  # noqa: E402
 from eso_agent.network import load_network  # noqa: E402
 from eso_agent.queue import queue_public, reset_queue  # noqa: E402
 
-app = FastAPI(title="ESO prijungimo sąlygos", version="0.1.0")
-
-
-@app.on_event("startup")
-def _startup():
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     hydrate_runs()
     from eso_agent.queue import ensure_queue
 
     ensure_queue()
+    yield
+
+
+app = FastAPI(title="ESO prijungimo sąlygos", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -174,6 +176,25 @@ def onepager_html():
     from eso_agent.onepager import render_onepager_html
 
     return HTMLResponse(render_onepager_html())
+
+
+@app.get("/api/onepager.pdf")
+def onepager_pdf():
+    from eso_agent.pdfutil import render_onepager_pdf
+
+    return Response(render_onepager_pdf(), media_type="application/pdf", headers={"Content-Disposition": 'attachment; filename="onepager.pdf"'})
+
+
+@app.get("/api/fonts/{name}")
+def font_file(name: str):
+    from eso_agent.fonts import FONT_DIR
+
+    if name not in {"DejaVuSans.ttf", "DejaVuSans-Bold.ttf"}:
+        raise HTTPException(404)
+    path = FONT_DIR / name
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="font/ttf")
 
 
 class PortalSubmit(BaseModel):
@@ -350,6 +371,16 @@ def brief_html(rid: str):
     if not (snap.get("escalate") or {}).get("brief"):
         raise HTTPException(404, "Stiprinimo paketo nėra — byla neeskaluota.")
     return HTMLResponse(render_brief_html(snap))
+
+
+@app.get("/api/runs/{rid}/brief.pdf")
+def brief_pdf(rid: str):
+    if rid not in RUNS:
+        raise HTTPException(404)
+    snap = snapshot(RUNS[rid])
+    if not (snap.get("escalate") or {}).get("brief"):
+        raise HTTPException(404, "Stiprinimo paketo nėra — byla neeskaluota.")
+    return Response(brief_pdf_bytes(snap), media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{rid}-brief.pdf"'})
 
 
 dist = ROOT / "web" / "dist"

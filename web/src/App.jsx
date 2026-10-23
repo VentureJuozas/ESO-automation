@@ -122,6 +122,10 @@ export default function App() {
           setRunningTool(null);
           setSelected(ev.tool || (ev.failed ? "escalate" : "engineer_approval"));
           setInspectorOpen(true);
+          getJSON(`/api/runs/${created.id}`).then((r) => {
+            setRun(r);
+            if (r.events) setEvents(r.events);
+          }).catch(() => {});
         } else if (ev.type === "status" || ev.type === "done") {
           if (ev.snapshot) {
             setRun(ev.snapshot);
@@ -193,6 +197,12 @@ export default function App() {
       }
       setRun(created);
       listen(created);
+      getJSON(`/api/runs/${created.id}`).then((r) => {
+        if (r.status && r.status !== "queued" && r.status !== "running") {
+          setRun(r);
+          if (r.events) setEvents(r.events);
+        }
+      }).catch(() => {});
     } catch (e) {
       setError(String(e));
       setRunningTool(null);
@@ -395,22 +405,30 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [presentOn, presentPack, presentStep]);
 
+  function restartPresent() {
+    if (!presentPack) return;
+    setPresentStep(0);
+    applyBeat(presentPack, 0);
+    setPresentPlaying(true);
+  }
+
   useEffect(() => {
     if (!presentOn || !presentPlaying || !presentPack) return undefined;
-    const ms = presentPack.autoplay_ms || 8000;
-    const t = setInterval(() => {
-      setPresentStep((s) => {
-        const n = (presentPack.beats || []).length;
-        if (s >= n - 1) {
-          setPresentPlaying(false);
-          return s;
-        }
-        applyBeat(presentPack, s + 1);
-        return s + 1;
-      });
-    }, ms);
+    const beats = presentPack.beats || [];
+    if (presentStep >= beats.length - 1) {
+      setPresentPlaying(false);
+      return undefined;
+    }
+    const ms = beats[presentStep]?.dwell_ms || presentPack.autoplay_ms || 20000;
+    const t = setTimeout(() => goPresent(1), ms);
+    return () => clearTimeout(t);
+  }, [presentOn, presentPlaying, presentPack, presentStep]);
+
+  useEffect(() => {
+    if (view !== "split" && view !== "customer") return undefined;
+    const t = setInterval(() => refreshQueue(), 1400);
     return () => clearInterval(t);
-  }, [presentOn, presentPlaying, presentPack]);
+  }, [view]);
 
   async function liveWhatIf(vals) {
     setWhatIfBusy(true);
@@ -499,7 +517,7 @@ export default function App() {
           <div><b>Sąlygos</b><small>Vadovo eilė · n8n drobė</small></div>
         </div>
         <nav className="nav">
-          <button className={`item intake-nav${view === "queue" ? " on" : ""}`} type="button" onClick={() => { setView("queue"); refreshQueue(); }}>
+          <button className={`item intake-nav${view === "queue" ? " on" : ""}`} type="button" data-testid="nav-desk" onClick={() => { setView("queue"); refreshQueue(); }}>
             <b>{t(lang, "desk")}</b>
             <small>{queue?.hud?.inbox_depth ?? 0} laukia · {queue?.hud?.new ?? 0} naujos</small>
           </button>
@@ -516,7 +534,7 @@ export default function App() {
               Scenarijai <span className="count">{scenarios.length}</span>
             </button>
             {open.paraiskos && scenarios.map((s) => (
-              <button key={s.id} className={`item${view === "case" && scenarioId === s.id ? " on" : ""}`} type="button" onClick={() => pickScenario(s)}>
+              <button key={s.id} className={`item${view === "case" && scenarioId === s.id ? " on" : ""}`} type="button" data-testid={`scenario-${s.id}`} onClick={() => pickScenario(s)}>
                 <b>{s.title}</b>
                 <small>{s.subtitle}</small>
               </button>
@@ -526,12 +544,15 @@ export default function App() {
             <button className={`sec-btn${open.istorija ? " open" : ""}`} type="button" onClick={() => setOpen((o) => ({ ...o, istorija: !o.istorija }))}>
               Istorija <span className="count">{history.length}</span>
             </button>
-            {open.istorija && history.map((h) => (
+            {open.istorija && history.slice(0, 6).map((h) => (
               <button key={h.id} className="item" type="button" onClick={() => openRun(h.id)}>
                 <b>{(h.title || h.id).toString().slice(0, 22)} · {h.solution || "—"} {h.kw} kW</b>
                 <small>{h.status}</small>
               </button>
             ))}
+            {open.istorija && history.length > 6 && (
+              <p className="side-note" style={{ padding: "4px 10px" }}>+{history.length - 6} senesnės</p>
+            )}
           </div>
           <div className={`sec${open.kita ? " open" : ""}`}>
             <button className={`sec-btn${open.kita ? " open" : ""}`} type="button" onClick={() => setOpen((o) => ({ ...o, kita: !o.kita }))}>
@@ -548,10 +569,10 @@ export default function App() {
                 <button className={`item${view === "integrations" ? " on" : ""}`} type="button" onClick={() => { setView("integrations"); setSelected("gis"); setInspectorOpen(true); }}>
                   <b>Integracijos</b><small>Adapteriai mock / stub</small>
                 </button>
-                <button className={`item${view === "customer" ? " on" : ""}`} type="button" onClick={() => setView("customer")}>
+                <button className={`item${view === "customer" ? " on" : ""}`} type="button" data-testid="nav-customer" onClick={() => setView("customer")}>
                   <b>Klientų maketas</b><small>Paraiška ir būsena</small>
                 </button>
-                <button className={`item${view === "split" ? " on" : ""}`} type="button" onClick={() => { setView("split"); refreshQueue(); }}>
+                <button className={`item${view === "split" ? " on" : ""}`} type="button" data-testid="nav-split" onClick={() => { setView("split"); refreshQueue(); }}>
                   <b>Klientas ir stalas</b><small>Split · minutes, ne dienos</small>
                 </button>
                 <a className="item" href="/api/onepager.html" target="_blank" rel="noreferrer">
@@ -570,7 +591,7 @@ export default function App() {
           <div className="top-actions">
             <span className="badge">{llmMode === "offline" ? t(lang, "replay") : `LLM ${llmMode}`}</span>
             <span className="badge">{t(lang, "sqlite")}</span>
-            <button className={`go${presentOn ? " on" : ""}`} type="button" onClick={() => (presentOn ? (setPresentOn(false), document.body.dataset.spot = "") : startPresent())}>{t(lang, "present")}</button>
+            <button className={`go${presentOn ? " on" : ""}`} type="button" data-testid="start-present" onClick={() => (presentOn ? (setPresentOn(false), document.body.dataset.spot = "") : startPresent())}>{t(lang, "present")}</button>
             <button className="go" type="button" onClick={() => setLang((l) => (l === "lt" ? "en" : "lt"))}>{t(lang, "lang")}</button>
             {(view === "case" || view === "intake") && (
               <>
@@ -580,7 +601,7 @@ export default function App() {
                 {run?.id && (
                   <a className="go" href={`/api/runs/${run.id}/audit.html`} target="_blank" rel="noreferrer">Auditas</a>
                 )}
-                <button className="exec" type="button" onClick={start} disabled={status === "running" || Boolean(runningTool)}>{t(lang, "runFlow")}</button>
+                <button className="exec" type="button" data-testid="run-flow" onClick={start} disabled={status === "running" || Boolean(runningTool)}>{t(lang, "runFlow")}</button>
               </>
             )}
             {view === "queue" && (
@@ -602,7 +623,7 @@ export default function App() {
             <div className="wf-wrap" data-spot-target="canvas">
               {view === "split" && (
                 <div className="split-view" data-spot-target="split">
-                  <CustomerPortal compact />
+                  <CustomerPortal compact onSubmitted={() => refreshQueue()} />
                   <QueueDesk
                     queue={queue}
                     batching={batching}
@@ -617,7 +638,7 @@ export default function App() {
                   />
                 </div>
               )}
-              {view === "customer" && <CustomerPortal />}
+              {view === "customer" && <CustomerPortal onSubmitted={() => refreshQueue()} />}
               {view === "queue" && (
                 <QueueDesk
                   queue={queue}
@@ -771,7 +792,7 @@ export default function App() {
             </div>
           )}
           {view === "case" && status === "escalated" && (
-            <div className="dock bad">
+            <div className="dock bad" data-testid="escalate-dock">
               <div style={{ flex: 1 }}>
                 <b>Patikra nepraėjo — perduota inžinieriui</b>
                 <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>
@@ -788,7 +809,7 @@ export default function App() {
                 />
               </div>
               {run?.id && (
-                <a className="go" href={`/api/runs/${run.id}/brief.html`} target="_blank" rel="noreferrer">Stiprinimo paketas</a>
+                <a className="go" data-testid="brief-link" href={`/api/runs/${run.id}/brief.html`} target="_blank" rel="noreferrer">Stiprinimo paketas</a>
               )}
               <button className="ink" type="button" onClick={() => override()} disabled={overrideReason.trim().length < 8}>
                 Inžinieriaus override
@@ -823,6 +844,7 @@ export default function App() {
           onClose={() => { setPresentOn(false); setPresentPlaying(false); document.body.dataset.spot = ""; }}
           onLang={() => setLang((l) => (l === "lt" ? "en" : "lt"))}
           onToggle={() => setPresentPlaying((p) => !p)}
+          onRestart={restartPresent}
         />
       )}
     </div>

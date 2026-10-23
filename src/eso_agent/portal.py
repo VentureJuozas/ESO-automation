@@ -7,7 +7,8 @@ from typing import Any
 from eso_agent.adapters import get_adapters
 from eso_agent.adapters.crm import REDACTED_ADDRESS, REDACTED_NAME
 from eso_agent.document import REDACTED_CUSTOMER, render_ts_html
-from eso_agent.engine import RUNS, create_run, run_sync_until_interrupt, snapshot, supply_data
+from eso_agent.engine import RUNS, run_sync_until_interrupt, snapshot, supply_data
+from eso_agent.pdfutil import render_ts_pdf
 from eso_agent.queue import QUEUE, ensure_queue, sla_for
 
 STATUS_MAP = {
@@ -21,7 +22,14 @@ STATUS_MAP = {
     "error": "klaida",
 }
 
-TRACK = ["gauta", "tikrinama", "laukia inžinieriaus", "išduota"]
+TRACK = ["gauta", "tikrinama", "laukia duomenų", "laukia inžinieriaus", "išduota"]
+
+
+def _stamp(rec: dict[str, Any], status: str) -> None:
+    tl = list(rec.get("timeline") or [])
+    if not tl or tl[-1].get("status") != status:
+        tl.append({"status": status, "at": time.time()})
+    rec["timeline"] = tl
 
 
 def _public(rec: dict[str, Any], snap: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -29,10 +37,13 @@ def _public(rec: dict[str, Any], snap: dict[str, Any] | None = None) -> dict[str
     status = STATUS_MAP.get(run_status, rec.get("status") or "gauta")
     missing = (snap or {}).get("missing") if status == "laukia duomenų" else None
     issued = bool((snap or {}).get("issued"))
+    submitted = rec.get("created_at") or time.time()
+    sla = sla_for(submitted, rec.get("kw"))
     return {
         "id": rec["id"],
         "status": status,
         "track": TRACK,
+        "timeline": rec.get("timeline") or [{"status": "gauta", "at": submitted}],
         "kw": rec.get("kw"),
         "phases": rec.get("phases"),
         "lat": rec.get("lat"),
@@ -43,11 +54,19 @@ def _public(rec: dict[str, Any], snap: dict[str, Any] | None = None) -> dict[str
         "run_id": rec.get("run_id"),
         "missing": missing,
         "issued": issued,
+        "sla": sla,
+        "decision_by": sla.get("deadline_at"),
         "ts_url": f"/api/portal/applications/{rec['id']}/ts.html" if issued else None,
         "pdf_url": f"/api/portal/applications/{rec['id']}/ts.pdf" if issued else None,
         "demo": True,
         "banner": "Demonstracinis maketas. Neoficialus ESO portalas. Asmens duomenų nėra.",
     }
+
+
+def _persist(rec: dict[str, Any], status: str) -> dict[str, Any]:
+    _stamp(rec, status)
+    rec["status"] = status
+    return get_adapters().crm.update(rec["id"], rec)
 
 
 def submit(form: dict[str, Any]) -> dict[str, Any]:
@@ -70,6 +89,7 @@ def submit(form: dict[str, Any]) -> dict[str, Any]:
         "object_name": form.get("object_name") or "Naujas buitinis objektas",
     }
     rec = crm.create(payload)
+    _stamp(rec, "gauta")
     qid = rec["id"]
     ensure_queue()
     QUEUE.append(
@@ -88,8 +108,21 @@ def submit(form: dict[str, Any]) -> dict[str, Any]:
             "sla": sla_for(time.time(), kw),
         }
     )
+    rec = _persist(rec, "tikrinama")
     snap = run_sync_until_interrupt("intake", delay=0, text=text, form={**payload, "_queue": {"queue_id": qid}})
-    rec = crm.update(rec["id"], {"run_id": snap["id"], "queue_id": qid, "status": STATUS_MAP.get(snap["status"], "tikrinama"), "run_status": snap["status"]})
+    status = STATUS_MAP.get(snap["status"], "tikrinama")
+    rec = crm.update(
+        rec["id"],
+        {
+            "run_id": snap["id"],
+            "queue_id": qid,
+            "status": status,
+            "run_status": snap["status"],
+        },
+    )
+    rec = crm.get(rec["id"]) or rec
+    _stamp(rec, status)
+    rec = crm.update(rec["id"], rec)
     return _public(rec, snap)
 
 
@@ -99,8 +132,13 @@ def get_app(app_id: str) -> dict[str, Any]:
         raise KeyError(app_id)
     snap = snapshot(RUNS[rec["run_id"]]) if rec.get("run_id") and rec["run_id"] in RUNS else None
     if snap:
-        get_adapters().crm.update(app_id, {"run_status": snap["status"], "status": STATUS_MAP.get(snap["status"], rec.get("status"))})
+        status = STATUS_MAP.get(snap["status"], rec.get("status"))
+        get_adapters().crm.update(app_id, {"run_status": snap["status"], "status": status})
         rec = get_adapters().crm.get(app_id) or rec
+        tl = rec.get("timeline") or []
+        if not tl or tl[-1].get("status") != status:
+            _stamp(rec, status)
+            rec = get_adapters().crm.update(app_id, rec)
     return _public(rec, snap)
 
 
@@ -109,8 +147,20 @@ def answer(app_id: str, fields: dict[str, Any]) -> dict[str, Any]:
     if not rec or not rec.get("run_id"):
         raise KeyError(app_id)
     snap = supply_data(rec["run_id"], fields)
-    get_adapters().crm.update(app_id, {"run_status": snap["status"], "status": STATUS_MAP.get(snap["status"], "tikrinama"), "lat": fields.get("lat"), "lon": fields.get("lon")})
+    status = STATUS_MAP.get(snap["status"], "tikrinama")
+    rec = get_adapters().crm.update(
+        app_id,
+        {
+            "run_status": snap["status"],
+            "status": status,
+            "lat": fields.get("lat"),
+            "lon": fields.get("lon"),
+        },
+    )
     rec = get_adapters().crm.get(app_id) or rec
+    _stamp(rec, "tikrinama")
+    _stamp(rec, status)
+    rec = get_adapters().crm.update(app_id, rec)
     return _public(rec, snap)
 
 
@@ -129,50 +179,15 @@ def ts_pdf(app_id: str) -> bytes:
     issued = snap.get("issued") or {}
     doc = issued.get("document") or {}
     lines = [
-        "PRIJUNGIMO SALYGOS (demonstracija)",
         f"Nr. {issued.get('ts_number') or doc.get('ts_number') or 'PROJEKTAS'}",
-        f"Objektas: {doc.get('object_name') or snap.get('parsed', {}).get('object_name')}",
+        f"Objektas: {doc.get('object_name') or (snap.get('parsed') or {}).get('object_name')}",
         f"Klientas: {REDACTED_CUSTOMER}",
         f"Adresas: {REDACTED_ADDRESS}",
-        f"Galia: {snap.get('parsed', {}).get('kw')} kW  {snap.get('parsed', {}).get('phases')}F",
+        f"Galia: {(snap.get('parsed') or {}).get('kw')} kW · {(snap.get('parsed') or {}).get('phases')}F",
         f"Sprendinys: {(snap.get('solution') or {}).get('id')}  {(snap.get('breaker') or {}).get('label')}",
         "",
-        (issued.get("section3") or (snap.get("draft") or {}).get("section3") or "")[:1200],
+        issued.get("section3") or (snap.get("draft") or {}).get("section3") or "",
         "",
-        "Neoficialus dokumentas. Asmens duomenys redaguoti.",
+        "Neoficialus dokumentas. Asmens duomenys redaguoti. Sąlygas pasirašo inžinierius.",
     ]
-    return _plain_pdf(lines)
-
-
-def _plain_pdf(lines: list[str]) -> bytes:
-    """Minimal PDF, Latin-1 fallback. No third-party renderer."""
-    def esc(s: str) -> str:
-        return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)").encode("latin-1", "replace").decode("latin-1")
-
-    y = 800
-    cmds = ["BT", "/F1 11 Tf"]
-    for line in lines:
-        for chunk in line.split("\n"):
-            cmds.append(f"1 0 0 1 48 {y} Tm ({esc(chunk[:110])}) Tj")
-            y -= 14
-            if y < 48:
-                break
-    cmds.append("ET")
-    stream = "\n".join(cmds).encode("latin-1")
-    objs = []
-    objs.append(b"<< /Type /Catalog /Pages 2 0 R >>")
-    objs.append(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
-    objs.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>")
-    objs.append(b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream")
-    objs.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
-    out = bytearray(b"%PDF-1.4\n")
-    xref = [0]
-    for i, obj in enumerate(objs, 1):
-        xref.append(len(out))
-        out += f"{i} 0 obj\n".encode() + obj + b"\nendobj\n"
-    start = len(out)
-    out += f"xref\n0 {len(objs)+1}\n0000000000 65535 f \n".encode()
-    for off in xref[1:]:
-        out += f"{off:010d} 00000 n \n".encode()
-    out += f"trailer\n<< /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF".encode()
-    return bytes(out)
+    return render_ts_pdf("Prijungimo sąlygos (demonstracija)", lines)

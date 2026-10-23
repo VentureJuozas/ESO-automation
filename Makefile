@@ -21,3 +21,6 @@ demo: install web-build
 
 test: install
 	ESO_STEP_DELAY=0 $(PYTHON) -m pytest -q
+
+e2e: web-build
+	cd web && npx playwright test

@@ -4,7 +4,7 @@ export default function WhatIfBar({ values, onChange, onLive, busy }) {
       <div className="kicker">What-if · gyvas perskaičiavimas</div>
       <label>
         kW {values.kw}
-        <input type="range" min="3" max="120" step="1" value={values.kw} onChange={(e) => onChange({ ...values, kw: Number(e.target.value) })} />
+        <input data-testid="whatif-kw" type="range" min="3" max="120" step="1" value={values.kw} onChange={(e) => onChange({ ...values, kw: Number(e.target.value) })} />
       </label>
       <label>
         Fazės
@@ -25,7 +25,7 @@ export default function WhatIfBar({ values, onChange, onLive, busy }) {
         />
         Rezervuota +40 kW
       </label>
-      <button className="go" type="button" disabled={busy} onClick={() => onLive(values)}>Skaičiuoti</button>
+      <button className="go" type="button" data-testid="whatif-run" disabled={busy} onClick={() => onLive(values)}>Skaičiuoti</button>
     </div>
   );
 }

@@ -16,6 +16,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Customer and desk",
             "say": "Left: a demo customer mock. Right: the manager desk. A request goes in, a TS comes out in minutes, not days.",
         },
+        "dwell_ms": 20000,
     },
     {
         "id": "desk",
@@ -29,6 +30,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Manager desk",
             "say": "This is a desk, not a chatbot. Twelve redacted 12-608 applications. SLA is three working days.",
         },
+        "dwell_ms": 5000,
     },
     {
         "id": "batch",
@@ -43,6 +45,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Run all",
             "say": "One click runs LangGraph. Python decides. The LLM only reads text. This replay is frozen — no network wait.",
         },
+        "dwell_ms": 25000,
     },
     {
         "id": "inbox",
@@ -57,6 +60,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Engineer inbox",
             "say": "A/B/C wait for an engineer. Fails do not issue. Approve, edit §3, or override with a reason.",
         },
+        "dwell_ms": 25000,
     },
     {
         "id": "hero_map",
@@ -72,6 +76,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Hero canvas · map",
             "say": "11 kW, 3-phase, pole 200/3. The map is our geometry. Tile servers are optional.",
         },
+        "dwell_ms": 20000,
     },
     {
         "id": "hero_abc",
@@ -86,6 +91,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Solution B",
             "say": "Overhead feeder, no cabinet on the plot — new pole KAS and 16 mm². A and C are ruled out by the table, not the LLM.",
         },
+        "dwell_ms": 15000,
     },
     {
         "id": "hero_cap",
@@ -100,6 +106,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Capacity",
             "say": "227.7 + 11 = 238.7 kW. The 80 % limit is 320 kW. All four checks pass.",
         },
+        "dwell_ms": 15000,
     },
     {
         "id": "hero_ts",
@@ -114,6 +121,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "TS §3",
             "say": "The conditions document stays Lithuanian. Numbers come from tools. An engineer always signs.",
         },
+        "dwell_ms": 20000,
     },
     {
         "id": "fail",
@@ -128,6 +136,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Fail path",
             "say": "100 kW: 327.7 vs 320. The graph branches to escalate. The product is a reinforcement brief: 400→630 kVA.",
         },
+        "dwell_ms": 25000,
     },
     {
         "id": "gallery",
@@ -142,6 +151,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Gallery",
             "say": "Sixteen issued files. In-scope 95 %, overall 84 %. The old 51 % sized the increment, not the total. Tool errors: zero.",
         },
+        "dwell_ms": 30000,
     },
     {
         "id": "audit",
@@ -157,6 +167,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Audit",
             "say": "Every tool, inputs, tags, overrides, SHA-256. Survives a restart — SQLite.",
         },
+        "dwell_ms": 20000,
     },
     {
         "id": "integrations",
@@ -170,6 +181,7 @@ BEATS: list[dict[str, Any]] = [
             "title": "Integrations",
             "say": "Five adapters: GIS, Power BI, CRM, pricing, TS registry. Today they are mocks. Stubs show the path to ESO systems.",
         },
+        "dwell_ms": 20000,
     },
     {
         "id": "time",
@@ -184,8 +196,11 @@ BEATS: list[dict[str, Any]] = [
             "title": "Time saved",
             "say": "Replay milliseconds versus a 2–4 hour assumption. Forty cases a month is not ESO statistics.",
         },
+        "dwell_ms": 30000,
     },
 ]
+
+TOTAL_MS = sum(int(b.get("dwell_ms") or 0) for b in BEATS)
 
 _PACK: dict[str, Any] | None = None
 
@@ -238,7 +253,8 @@ def frozen_pack() -> dict[str, Any]:
         "queue_before": before,
         "queue_after": after,
         "audit": {"sha256": audit.get("sha256"), "tool_count": len(audit.get("tools") or [])},
-        "autoplay_ms": 8000,
+        "autoplay_ms": BEATS[0]["dwell_ms"],
+        "total_ms": TOTAL_MS,
         "frozen": True,
         "note": "Užšaldytas replay. Jokio tinklo, jokio rakto.",
     }

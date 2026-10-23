@@ -47,3 +47,6 @@ def test_present_pack_frozen_beats():
     assert pack["fail"]["failed"] is True
     assert pack["beats"][0]["en"]["title"]
     assert pack["audit"]["sha256"]
+    assert pack["total_ms"] == 270000
+    assert all(b.get("dwell_ms") for b in pack["beats"])
+    assert pack["beats"][-1]["dwell_ms"] == 30000

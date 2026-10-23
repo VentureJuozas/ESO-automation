@@ -2,9 +2,9 @@
 
 Adapters are the map. Each phase replaces one mock with the real ESO system named in the stub.
 
-## Round 7 (final, this session)
+## After the jury (production)
 
-QA, bug-bash and polish: autoplay dwell vs 4–5 min script, present-bar crowding at 1366, Chrome Translate overlay, portal tracker whitespace and “laukia duomenų” as its own step, missing-data then PDF in one sitting, PDF Lithuanian glyphs.
+Round 7 closed the demo loop. Remaining work is swapping adapters, not more canvas chrome.
 
 ## Phase 1 — Swap mocks for live reads
 

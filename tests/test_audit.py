@@ -39,5 +39,11 @@ def test_reinforcement_brief_options_and_html():
     html = render_brief_html(snap)
     assert "630" in html
     assert "inferred" in html or "prielaida" in html.lower()
+    assert "ąčęėįšųūž" in html
+    from eso_agent.brief import brief_pdf_bytes
+
+    pdf = brief_pdf_bytes(snap)
+    assert pdf[:4] == b"%PDF"
+    assert b"DejaVu" in pdf
     built = build_reinforcement_brief({"after_kw": 327.7, "limit_80_kw": 320, "over_kw": 7.7}, pending_kw=25, pending_cases=3)
     assert built["pending_impact"]["pending_cases"] == 3

@@ -4,6 +4,7 @@ from __future__ import annotations
 from html import escape
 from typing import Any
 
+from eso_agent.fonts import font_face_css
 from eso_agent.ts_text import issue_dates, ownership_boundary, section3_blocks
 
 REDACTED_CUSTOMER = "Buitinis vartotojas (redaguota)"
@@ -117,14 +118,15 @@ def render_ts_html(snap: dict[str, Any]) -> str:
     sig = doc.get("signature") or {}
     wm = f'<div class="wm">{escape(watermark)}</div>' if watermark else ""
     return f"""<!DOCTYPE html>
-<html lang="lt">
+<html lang="lt" translate="no">
 <head>
 <meta charset="utf-8">
 <title>Prijungimo sąlygos {number}</title>
 <style>
+  {font_face_css()}
   @page {{ size: A4; margin: 16mm 16mm 18mm 16mm; }}
   html, body {{ background: #ececec; }}
-  body {{ font-family: "Times New Roman", Times, Georgia, serif; color: #111; margin: 0; }}
+  body {{ font-family: DejaVu, "Times New Roman", Times, Georgia, serif; color: #111; margin: 0; }}
   .sheet {{
     width: 210mm; min-height: 297mm; margin: 16px auto; background: #fff;
     padding: 18mm 16mm 16mm; box-sizing: border-box; position: relative;

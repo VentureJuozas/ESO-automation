@@ -507,6 +507,8 @@ async def subscribe(run_id: str):
     try:
         for ev in run["events"]:
             yield ev
+        if run.get("status") not in {None, "queued", "running"}:
+            yield {"type": "status", "status": run["status"], "id": run_id, "snapshot": snapshot(run)}
         while True:
             ev = await q.get()
             yield ev

@@ -23,8 +23,11 @@ def test_portal_submit_track_and_pdf():
             pdf = c.get(f"/api/portal/applications/{aid}/ts.pdf")
             assert pdf.status_code == 200
             assert pdf.content[:4] == b"%PDF"
+            assert b"DejaVu" in pdf.content
             html = c.get(f"/api/portal/applications/{aid}/ts.html")
             assert "redaguot" in html.text.lower()
+            assert got.get("decision_by")
+            assert any(x["status"] == "laukia inžinieriaus" for x in got.get("timeline") or [])
 
 
 def test_portal_missing_then_answer():
@@ -53,6 +56,12 @@ def test_onepager_and_adapters_api():
         assert ad["mode"] == "mock"
         assert len(ad["adapters"]) == 5
         pack = c.get("/api/present").json()
-        assert pack["autoplay_ms"] == 8000
+        assert pack["total_ms"] == 270000
+        assert pack["beats"][0]["dwell_ms"] == 20000
         assert any(b["id"] == "split" for b in pack["beats"])
         assert any(b["id"] == "integrations" for b in pack["beats"])
+        assert "ąčęėįšųūž" in html.text
+        pdf = c.get("/api/onepager.pdf")
+        assert pdf.status_code == 200
+        assert pdf.content[:4] == b"%PDF"
+        assert b"DejaVu" in pdf.content

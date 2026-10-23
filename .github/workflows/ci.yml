@@ -30,3 +30,14 @@ jobs:
           npm ci --prefer-offline || npm install
           npm run build
           npm run lint
+          test -f dist/index.html
+      - name: Playwright e2e
+        env:
+          CI: "true"
+          ESO_STEP_DELAY: "0"
+          PYTHONPATH: src:.
+        run: |
+          python -m pip install -r requirements.txt
+          cd web
+          npx playwright install --with-deps chromium
+          npx playwright test

@@ -22,16 +22,20 @@ make test
 
 Queue, runs and audit persist in `data/demo.sqlite`. **Atstatyti demo** reseeds.
 
-Jury walkthrough: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) · A4 leave-behind: `/api/onepager.html`
+Jury walkthrough: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) · A4 leave-behind: `/api/onepager.html` · rounds: [CHANGELOG.md](CHANGELOG.md)
+
+`make demo` installs Python deps and **builds `web/dist` if it is missing**, then serves on :8000.
 
 ## Screenshots
 
-After `make demo`:
+After `make demo` (also in the PR walkthrough):
 
-- **Klientų maketas** — household form, tracker gauta → išduota, missing-data reply, TS PDF
-- **Klientas ir stalas** — split: request in on the left, desk on the right
-- **Integracijos** — five adapter nodes (mock / stub) on the n8n canvas
-- **Vieno lapo santrauka** — printable A4 at `/api/onepager.html`
+- **Vadovo eilė** — desk HUD, table, engineer inbox
+- **Klientų maketas** — status page: summary, timeline (including Laukia duomenų), SLA date, TS download
+- **Klientas ir stalas** — request in, TS out
+- **Pristatymas** — 4.5 min autoplay, compact LT/EN bar, restart on the last beat
+- **TS PDF** — DejaVu, ąčęėįšųūž
+- **Integracijos** — five adapter nodes, mock / stub
 
 ## Pitch in one minute
 

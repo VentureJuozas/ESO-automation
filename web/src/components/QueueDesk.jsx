@@ -35,7 +35,7 @@ function InboxCard({ item, reason, setReason, section3, setSection3, busy, onApp
   const waiting = item.status === "awaiting_approval";
   const failed = item.status === "escalated";
   return (
-    <article className={`inbox-card${failed ? " bad" : ""}`}>
+    <article className={`inbox-card${failed ? " bad" : ""}`} data-testid={`inbox-card-${item.id}`} data-title={item.title}>
       <header>
         <b>{item.title}</b>
         <span className={`st ${item.status}`}>{STATUS_LT[item.status] || item.status}</span>
@@ -66,12 +66,12 @@ function InboxCard({ item, reason, setReason, section3, setSection3, busy, onApp
           <a className="go" href={`/api/runs/${item.run_id}/audit.html`} target="_blank" rel="noreferrer">Auditas</a>
         )}
         {failed && item.run_id && (
-          <a className="go" href={`/api/runs/${item.run_id}/brief.html`} target="_blank" rel="noreferrer">Paketas</a>
+          <a className="go" data-testid={`inbox-brief-${item.id}`} href={`/api/runs/${item.run_id}/brief.html`} target="_blank" rel="noreferrer">Paketas</a>
         )}
         {waiting && (
           <>
             <button className="go" type="button" disabled={busy} onClick={() => onEdit(item, section3)}>Įrašyti §3</button>
-            <button className="exec" type="button" disabled={busy} onClick={() => onApprove(item, section3)}>Patvirtinti</button>
+            <button className="exec" type="button" data-testid={`inbox-approve-${item.id}`} disabled={busy} onClick={() => onApprove(item, section3)}>Patvirtinti</button>
           </>
         )}
         {failed && (

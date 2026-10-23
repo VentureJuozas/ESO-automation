@@ -12,3 +12,7 @@ __pycache__/
 web/node_modules/
 web/dist/
 
+Playwright artifacts
+web/test-results/
+web/playwright-report/
+web/blob-report/

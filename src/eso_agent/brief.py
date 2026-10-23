@@ -4,6 +4,9 @@ from __future__ import annotations
 from html import escape
 from typing import Any
 
+from eso_agent.fonts import GLYPHS, font_face_css
+from eso_agent.pdfutil import render_brief_pdf
+
 
 def build_reinforcement_brief(
     numbers: dict[str, Any],
@@ -93,21 +96,24 @@ def render_brief_html(snap: dict[str, Any]) -> str:
         for o in options
     )
     return f"""<!DOCTYPE html>
-<html lang="lt"><head><meta charset="utf-8"><title>Stiprinimo paketas</title>
+<html lang="lt" translate="no"><head><meta charset="utf-8"><title>Stiprinimo paketas</title>
 <style>
+  {font_face_css()}
   @page {{ size: A4; margin: 16mm; }}
-  body {{ font-family: Inter, "Segoe UI", sans-serif; color: #111; margin: 24px; }}
+  body {{ font-family: DejaVu, Inter, "Segoe UI", sans-serif; color: #111; margin: 24px; }}
   h1 {{ font-size: 18px; }}
   table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
   th, td {{ border-bottom: 1px solid #ddd; padding: 8px 6px; vertical-align: top; text-align: left; }}
   tr.rec {{ background: #f1fbf6; }}
   .tag {{ font-size: 11px; color: #9a3412; }}
   .note {{ color: #555; font-size: 12px; margin-top: 16px; }}
-  .noprint button {{ border: 0; background: #1c1c1f; color: #fff; padding: 8px 14px; border-radius: 8px; }}
+  .noprint button, .noprint a {{ border: 0; background: #1c1c1f; color: #fff; padding: 8px 14px; border-radius: 8px; text-decoration: none; }}
   @media print {{ .noprint {{ display: none; }} }}
 </style></head><body>
-<div class="noprint"><button onclick="window.print()">Spausdinti / PDF</button></div>
+<div class="noprint"><button onclick="window.print()">Spausdinti</button>
+<a href="/api/runs/{escape(str(snap.get('id') or ''))}/brief.pdf">Atsisiųsti PDF</a></div>
 <h1>Stiprinimo paketas · TP 12-608</h1>
+<p class="note">Lietuviškos raidės: {GLYPHS}</p>
 <p>Po prijungimo <b>{nums.get('after_kw')}</b> kW vs 80 % riba <b>{nums.get('limit_80_kw')}</b> kW
 (viršijimas {nums.get('over_kw')} kW). Sąlygos neišduotos.</p>
 <table>
@@ -117,3 +123,19 @@ def render_brief_html(snap: dict[str, Any]) -> str:
 <p>{escape(str(impact.get('note') or ''))}</p>
 <p class="note">{escape(str(brief.get('disclaimer') or ''))} {escape(str(brief.get('safety') or ''))}</p>
 </body></html>"""
+
+
+def brief_pdf_bytes(snap: dict[str, Any]) -> bytes:
+    esc = (snap.get("escalate") or {})
+    brief = esc.get("brief") or {}
+    nums = brief.get("numbers") or esc.get("numbers") or {}
+    lines = [
+        f"Po prijungimo {nums.get('after_kw')} kW vs 80 % riba {nums.get('limit_80_kw')} kW (viršijimas {nums.get('over_kw')} kW).",
+        "Sąlygos neišduotos.",
+    ]
+    for o in brief.get("options") or []:
+        lines.append(f"Pakopa {o.get('rung')}: {o.get('title')} — {o.get('why')}")
+    lines.append(str((brief.get("pending_impact") or {}).get("note") or ""))
+    lines.append(str(brief.get("disclaimer") or ""))
+    lines.append(str(brief.get("safety") or ""))
+    return render_brief_pdf("Stiprinimo paketas · TP 12-608", lines)
