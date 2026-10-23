@@ -4,7 +4,7 @@ from __future__ import annotations
 
 def render_onepager_html() -> str:
     return """<!DOCTYPE html>
-<html lang="lt">
+<html lang="lt" translate="no">
 <head>
 <meta charset="utf-8"/>
 <title>Prijungimo sąlygos · vieno lapo santrauka</title>

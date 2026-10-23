@@ -48,6 +48,7 @@ def test_onepager_and_adapters_api():
         assert html.status_code == 200
         assert "95" in html.text
         assert "SHA-256" in html.text
+        assert 'translate="no"' in html.text
         ad = c.get("/api/adapters").json()
         assert ad["mode"] == "mock"
         assert len(ad["adapters"]) == 5
