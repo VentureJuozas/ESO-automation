@@ -29,7 +29,7 @@ test("ESO helper single-case flow, step panels, approve, TS PDF", async ({ page,
 
   await page.getByTestId("step-check_capacity").click();
   await expect(page.getByTestId("step-panel")).toBeVisible();
-  await expect(page.getByTestId("data-source")).toContainText("Power BI");
+  await expect(page.getByTestId("data-source")).toContainText("Smart meter");
   await expect(page.getByTestId("requirements")).toContainText("80 %");
   await expect(page.getByTestId("calculation")).toBeVisible();
   await expect(page.getByTestId("load-loss")).toBeVisible();

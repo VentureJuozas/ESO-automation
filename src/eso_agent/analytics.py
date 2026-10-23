@@ -15,7 +15,7 @@ from eso_agent.store import (
 )
 from eso_agent.timing import MANUAL_MINUTES, MONTHLY_CASES_ASSUMPTION, MONTHLY_NOTE
 
-SEED_NOTE = "Sintetinis mėnuo · ne ESO statistika · aiškiai pažymėta synthetic"
+SEED_NOTE = "Sintetinis mėnuo, ne ESO statistika, aiškiai pažymėta synthetic"
 HOURS_SAVED_PER_ISSUED = round(sum(MANUAL_MINUTES.values()) / 60.0, 2)  # assumption
 
 

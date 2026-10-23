@@ -1,4 +1,4 @@
-"""Transformer and feeder capacity. Mock = 12-608 peak. Stub = Power BI / SCADA."""
+"""Transformer and feeder capacity. Mock = 12-608 peak. Stub = smart meter data."""
 from __future__ import annotations
 
 from typing import Any, Protocol
@@ -35,7 +35,7 @@ class MockCapacity:
 
 class StubCapacity:
     mode = "stub"
-    target = "Power BI free-capacity + SCADA 15 min"
+    target = "Smart meter data"
 
     def limits(self) -> dict[str, Any]:
         raise NotImplementedError(f"Connect {self.target}")

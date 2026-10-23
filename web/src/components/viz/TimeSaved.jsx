@@ -48,7 +48,7 @@ export default function TimeSaved({ comparison }) {
                   <i className="manual" style={{ width: `${(r.manual_min / maxMin) * 100}%` }} />
                   <i className="agent" style={{ width: `${Math.max(2, (r.agent_ms / 60000 / maxMin) * 100)}%` }} />
                 </span>
-                <span className="time-num">{r.manual_min} min · {fmtAgent(r.agent_ms)}</span>
+                <span className="time-num">{r.manual_min} min, {fmtAgent(r.agent_ms)}</span>
               </div>
             ))}
           </div>

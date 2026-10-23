@@ -69,11 +69,11 @@ BEATS: list[dict[str, Any]] = [
         "apply": "hero",
         "select": "render_map",
         "lt": {
-            "title": "Hero drobė · žemėlapis",
+            "title": "Hero drobė, žemėlapis",
             "say": "11 kW, 3F, atrama 200/3. Žemėlapis — mūsų geometrija. Plytelių serveris nebūtinas.",
         },
         "en": {
-            "title": "Hero canvas · map",
+            "title": "Hero canvas, map",
             "say": "11 kW, 3-phase, pole 200/3. The map is our geometry. Tile servers are optional.",
         },
         "dwell_ms": 20000,
@@ -192,11 +192,11 @@ BEATS: list[dict[str, Any]] = [
         "spot": "canvas",
         "lt": {
             "title": "Integracijos",
-            "say": "Penki adapteriai: GIS, Power BI, CRM, kainos, TS registras. Šiandien mock. Stubai rodo kelią į ESO sistemas.",
+            "say": "Penki adapteriai: GIS, išmanieji skaitikliai, CRM, kainos, TS registras. Šiandien mock. Stubai rodo kelią į ESO sistemas.",
         },
         "en": {
             "title": "Integrations",
-            "say": "Five adapters: GIS, Power BI, CRM, pricing, TS registry. Today they are mocks. Stubs show the path to ESO systems.",
+            "say": "Five adapters: GIS, smart meter data, CRM, pricing, TS registry. Today they are mocks. Stubs show the path to ESO systems.",
         },
         "dwell_ms": 20000,
     },

@@ -10,12 +10,12 @@ from eso_agent.ts_text import issue_dates, ownership_boundary, section3_blocks
 
 REDACTED_CUSTOMER = "Buitinis vartotojas (redaguota)"
 REDACTED_CODE = "ASMENS KODAS / EIC REDAGUOTAS"
-REDACTED_ADDRESS = "Adresas redaguotas · objektas prie TP 12-608 (koordinatės, be gatvės)"
+REDACTED_ADDRESS = "Adresas redaguotas, objektas prie TP 12-608 (koordinatės, be gatvės)"
 REDACTED_OPERATOR = "AB Energijos skirstymo operatorius"
 SOLUTION_LT = {
-    "A": "A · esama KAS, jungiklio keitimas",
-    "B": "B · nauja KAS ant atramos",
-    "C": "C · nauja KS/KAS sklypo riboje",
+    "A": "A, esama KAS, jungiklio keitimas",
+    "B": "B, nauja KAS ant atramos",
+    "C": "C, nauja KS/KAS sklypo riboje",
 }
 LAYOUT_BANNER = ""
 

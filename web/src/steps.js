@@ -1,7 +1,7 @@
 export const GROUPS = [
   { id: "application", title: "Application", hue: "#20366c", icon: "doc", tools: ["parse_request"] },
   { id: "connection", title: "Connection point", hue: "#4d6a9a", icon: "pin", tools: ["locate_connection_point", "render_map"] },
-  { id: "checks", title: "Analysis", hue: "#35548a", icon: "grid", tools: ["check_capacity", "check_voltage_drop", "check_reliability", "check_future"] },
+  { id: "checks", title: "Analysis", hue: "#e6b325", icon: "grid", tools: ["check_capacity", "check_voltage_drop", "check_reliability", "check_future"] },
   { id: "solution", title: "Solution", hue: "#7a9620", icon: "branch", tools: ["select_solution", "size_breaker", "estimate_cost"] },
   { id: "issue", title: "Issue", hue: "#6d8a22", icon: "send", tools: ["draft_ts_section3", "engineer_approval", "issue_ts"] },
 ];

@@ -47,7 +47,7 @@ function Taxonomy({ taxonomy }) {
       </div>
       <ul className="tax-legend">
         {order.map((k) => (
-          <li key={k}><i className={k} />{taxonomy.labels?.[k] || k} · {cases[k] || 0}</li>
+          <li key={k}><i className={k} />{taxonomy.labels?.[k] || k}, {cases[k] || 0}</li>
         ))}
       </ul>
     </div>
@@ -65,7 +65,7 @@ export default function Gallery({ gallery, running, onRun, onWhatIf, onOpenRun }
     <div className="gallery">
       <header className="desk-head">
         <div>
-          <div className="kicker">Istorinė galerija · 12-608</div>
+          <div className="kicker">Istorinė galerija, 12-608</div>
           <h2>Išduotos TS vs agentas</h2>
           <p className="hint">Sąžiningas back-test. In-scope = 12-608 ir žinomas taškas. Duomenys nebuvo taikomi rezultatui.</p>
         </div>
@@ -126,8 +126,8 @@ export default function Gallery({ gallery, running, onRun, onWhatIf, onOpenRun }
         </div>
         {selected ? (
           <aside className="gallery-detail">
-            <div className="kicker">{selected.id} · {CAT_LT[selected.category] || selected.category}</div>
-            <h3>{selected.tp_issued} · agentas {selected.agent?.solution || "—"}</h3>
+            <div className="kicker">{selected.id}, {CAT_LT[selected.category] || selected.category}</div>
+            <h3>{selected.tp_issued}, agentas {selected.agent?.solution || "—"}</h3>
             <p className="hint">{selected.note}{selected.missing_reason ? ` ${selected.missing_reason}` : ""}</p>
             <table className="grid-table cmp">
               <thead>

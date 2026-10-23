@@ -35,7 +35,7 @@ def all_scenarios() -> list[dict[str, Any]]:
         {
             "id": "hero",
             "code": "B",
-            "title": "Hero · nauja KAS ant atramos",
+            "title": "Hero, nauja KAS ant atramos",
             "subtitle": "11 kW, 3F, L-200, atrama 200/3",
             "pitch": True,
             "expected_solution": "B",
@@ -46,7 +46,7 @@ def all_scenarios() -> list[dict[str, Any]]:
         {
             "id": "solution_a",
             "code": "A",
-            "title": "Sprendinys A · esama spinta",
+            "title": "Sprendinys A, esama spinta",
             "subtitle": "11 kW, 3F, KS-39685",
             "pitch": False,
             "expected_solution": "A",
@@ -64,7 +64,7 @@ def all_scenarios() -> list[dict[str, Any]]:
         {
             "id": "solution_c",
             "code": "C",
-            "title": "Sprendinys C · įsipjovimas į kabelį",
+            "title": "Sprendinys C, įsipjovimas į kabelį",
             "subtitle": "14 kW, 3F, L-KS14330",
             "pitch": False,
             "expected_solution": "C",
@@ -82,7 +82,7 @@ def all_scenarios() -> list[dict[str, Any]]:
         {
             "id": "fail_capacity",
             "code": "!",
-            "title": "Nepraeina · inžinieriui",
+            "title": "Nepraeina, inžinieriui",
             "subtitle": "100 kW, 3F, ta pati vieta kaip hero",
             "pitch": False,
             "expected_solution": "B",
@@ -110,7 +110,7 @@ def get_scenario(sid: str) -> dict[str, Any]:
 INTAKE_SAMPLES = [
     {
         "id": "email_hero",
-        "title": "El. laiškas · 11 kW sodyba",
+        "title": "El. laiškas, 11 kW sodyba",
         "text": (
             "Sveiki,\n\n"
             "Prašome prijungimo sąlygų naujam buitiniam vartotojui. Objektas — sodyba prie Dusinėnų. "
@@ -121,7 +121,7 @@ INTAKE_SAMPLES = [
     },
     {
         "id": "portal_cabinet",
-        "title": "Portalas · esama spinta",
+        "title": "Portalas, esama spinta",
         "text": (
             "Pateikiu paraišką per savitarną. Naujas buitinis, 11 kW, 3 fazės. "
             "Sklype jau stovi KS-39685. Koordinatės 54.55820, 25.27680."
@@ -129,7 +129,7 @@ INTAKE_SAMPLES = [
     },
     {
         "id": "email_fail",
-        "title": "El. laiškas · 100 kW",
+        "title": "El. laiškas, 100 kW",
         "text": (
             "Laba diena, planuojame 100 kW trifazį prijungimą buitiniam objektui "
             "koordinatėmis 54,55929, 25,27955, TP 12-608. Prašome sąlygų."

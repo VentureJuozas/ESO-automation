@@ -66,7 +66,7 @@ export default function Sidebar({
         <img className="brand-logo" src="/eso-logo.png" alt="ESO" />
         <div>
           <b>ESO helper</b>
-          <small>0.4 kV · TP 12-608</small>
+          <small>0.4 kV, TP 12-608</small>
         </div>
       </div>
       <nav className="nav">

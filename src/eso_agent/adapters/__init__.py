@@ -77,8 +77,8 @@ def adapter_catalog() -> list[dict]:
         },
         {
             "id": "capacity",
-            "title": "Power BI / SCADA pajėgumas",
-            "real_system": "Power BI + 15 min SCADA (pastotes_load)",
+            "title": "Išmaniųjų skaitiklių duomenys",
+            "real_system": "Smart meter data (pastotes_load)",
             "mode": a.capacity.mode,
             "supplies": "Viršūnė 227,7 kW, 80/90 % ribos, rezervuotos kW",
             "consumed_by": ["check_capacity", "check_future"],

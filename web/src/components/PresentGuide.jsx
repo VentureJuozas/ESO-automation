@@ -14,7 +14,7 @@ export default function PresentGuide({ pack, step, lang, playing, onPrev, onNext
       <div className="present-row">
         <div className="present-copy">
           <div className="kicker" data-testid="present-kicker">
-            {lang === "en" ? "Guided path" : "Vedamas kelias"} · {step + 1}/{n} · {playing ? (lang === "en" ? "autoplay" : "auto") : (lang === "en" ? "paused" : "pauzė")} · {totalMin} min
+            {lang === "en" ? "Guided path" : "Vedamas kelias"}, {step + 1}/{n}, {playing ? (lang === "en" ? "autoplay" : "auto") : (lang === "en" ? "paused" : "pauzė")}, {totalMin} min
           </div>
           <h3 data-testid="present-title">{copy.title}</h3>
           <p data-testid="present-say">{copy.say}</p>

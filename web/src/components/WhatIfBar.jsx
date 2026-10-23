@@ -1,7 +1,7 @@
 export default function WhatIfBar({ values, onChange, onLive, busy }) {
   return (
     <div className="whatif-bar">
-      <div className="kicker">What-if · gyvas perskaičiavimas</div>
+      <div className="kicker">What-if, gyvas perskaičiavimas</div>
       <label>
         kW {values.kw}
         <input data-testid="whatif-kw" type="range" min="3" max="120" step="1" value={values.kw} onChange={(e) => onChange({ ...values, kw: Number(e.target.value) })} />

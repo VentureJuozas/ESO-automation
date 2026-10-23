@@ -80,7 +80,7 @@ LLM: `parse_request`, `draft_ts_section3`. Human: `engineer_approval`.
 - Hero coordinates and pole/cabinet geometry
 - Voltage conductor 4A-50 and 230 V baseline on L-200
 - TS number `26-E-DEMO-…`, redacted parties
-- Adapter reads (GIS, Power BI, CRM, pricing, registry) until Phase 1 swaps them
+- Adapter reads (GIS, smart meter data, CRM, pricing, registry) until Phase 1 swaps them
 
 **Human**
 

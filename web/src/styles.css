@@ -529,6 +529,11 @@ table.cost td:last-child { text-align: right; font-family: var(--mono); font-siz
   padding: 8px 10px; border: 0; border-radius: 8px; background: transparent;
   text-align: left; font-size: 12.5px; font-weight: 600; color: var(--ink);
 }
+.n8n-node.analysis-node {
+  background: #fff6d4;
+  border-color: #e6b325;
+}
+.n8n-node.analysis-node .n8n-ico { background: #e6b325; color: #20366c; }
 .analysis-menu button { display: flex; align-items: center; gap: 8px; }
 .analysis-menu .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
 .analysis-menu .nav-dot.st-done { background: var(--ok); }

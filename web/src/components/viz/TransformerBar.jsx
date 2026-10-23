@@ -22,7 +22,7 @@ export default function TransformerBar({ bar, pass }) {
       </div>
       <div className="kv">
         <div><b>Before</b><span>{fmtNum(bar.before_kw)} kW</span></div>
-        <div><b>After</b><span>{fmtNum(bar.after_kw)} kW {pass ? "· pass" : "· fail"}</span></div>
+        <div><b>After</b><span>{fmtNum(bar.after_kw)} kW, {pass ? "pass" : "fail"}</span></div>
         <div><b>Coincident</b><span>{fmtNum(bar.coincident_kw, 2)} kW</span></div>
         <div><b>Added</b><span>{fmtNum(bar.added_kw)} kW</span></div>
       </div>

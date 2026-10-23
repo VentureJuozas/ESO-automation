@@ -29,7 +29,7 @@ def build_reinforcement_brief(
             "cost_hi": 32000,
             "currency": "EUR",
             "tag": "inferred",
-            "owner": "Tinklų plėtros inžinierius · TP 12-608",
+            "owner": "Tinklų plėtros inžinierius, TP 12-608",
             "next_step": "Parengti 5 pakopos užduotį: TR užsakymas, 0,4 kV įvado 630 A ir 10 kV 50 A saugikliai.",
             "recommended": True,
         },
@@ -61,7 +61,7 @@ def build_reinforcement_brief(
         },
     ]
     return {
-        "title": "Stiprinimo paketas · 5 pakopa",
+        "title": "Stiprinimo paketas, 5 pakopa",
         "numbers": {**numbers, "over_kw": over},
         "options": options,
         "recommended": "tr_630",
@@ -112,7 +112,7 @@ def render_brief_html(snap: dict[str, Any]) -> str:
 </style></head><body>
 <div class="noprint"><button onclick="window.print()">Spausdinti</button>
 <a href="/api/runs/{escape(str(snap.get('id') or ''))}/brief.pdf">Atsisiųsti PDF</a></div>
-<h1>Stiprinimo paketas · TP 12-608</h1>
+<h1>Stiprinimo paketas, TP 12-608</h1>
 <p class="note">Lietuviškos raidės: {GLYPHS}</p>
 <p>Po prijungimo <b>{nums.get('after_kw')}</b> kW vs 80 % riba <b>{nums.get('limit_80_kw')}</b> kW
 (viršijimas {nums.get('over_kw')} kW). Sąlygos neišduotos.</p>
@@ -138,4 +138,4 @@ def brief_pdf_bytes(snap: dict[str, Any]) -> bytes:
     lines.append(str((brief.get("pending_impact") or {}).get("note") or ""))
     lines.append(str(brief.get("disclaimer") or ""))
     lines.append(str(brief.get("safety") or ""))
-    return render_brief_pdf("Stiprinimo paketas · TP 12-608", lines)
+    return render_brief_pdf("Stiprinimo paketas, TP 12-608", lines)

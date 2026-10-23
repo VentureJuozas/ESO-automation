@@ -27,7 +27,7 @@ export default function RuleSheet({ toolId, catalog }) {
         {meta.rule_ref && (
           <p className="rule" style={{ marginTop: 8 }}>
             <a href={meta.rule_ref.url} target="_blank" rel="noreferrer">{meta.rule_ref.label} ↗</a>
-            {meta.rule_ref.local && <span style={{ color: "var(--muted)" }}> · {meta.rule_ref.local}</span>}
+            {meta.rule_ref.local && <span style={{ color: "var(--muted)" }}>, {meta.rule_ref.local}</span>}
           </p>
         )}
       </div>

@@ -9,7 +9,7 @@ def render_onepager_html() -> str:
 <html lang="lt" translate="no">
 <head>
 <meta charset="utf-8"/>
-<title>Prijungimo sąlygos · vieno lapo santrauka</title>
+<title>Prijungimo sąlygos, vieno lapo santrauka</title>
 <style>
   {font_face_css()}
   * {{ box-sizing: border-box; }}
@@ -57,7 +57,7 @@ def render_onepager_html() -> str:
 </head>
 <body>
 <div class="screen">
-<div class="banner">Demonstracija · neoficialus ESO dokumentas · asmens duomenų nėra · {GLYPHS}</div>
+<div class="banner">Demonstracija, neoficialus ESO dokumentas, asmens duomenų nėra, {GLYPHS}</div>
 <div class="noprint">
   <button onclick="window.print()">Spausdinti A4</button>
   <a href="/api/onepager.pdf">Atsisiųsti PDF</a>
@@ -88,7 +88,7 @@ Sąlygas visada pasirašo žmogus.</p>
       <tr><td>R3</td><td>51 %</td><td>—</td><td>paslėpta</td></tr>
       <tr><td>R4+</td><td>84 %</td><td>95 %</td><td>0</td></tr>
     </table>
-    <p>Taksonomija: (a) kita TP · (b) trūksta įvesties · (c) įrankis · (d) inžinieriaus sprendimas.
+    <p>Taksonomija: (a) kita TP, (b) trūksta įvesties, (c) įrankis, (d) inžinieriaus sprendimas.
     What-if užpildymas: 6 / 7 trūkstamų bylų.</p>
   </div>
   <div class="box">
@@ -105,7 +105,7 @@ Sąlygas visada pasirašo žmogus.</p>
     <h2>Toliau — adapteriai</h2>
     <ul>
       <li>GIS / topologija → ESO GIS</li>
-      <li>Pajėgumas → Power BI / SCADA</li>
+      <li>Pajėgumas → išmaniųjų skaitiklių duomenys</li>
       <li>CRM → savitarna</li>
       <li>Kainos → įkainių metodika</li>
       <li>TS registras → SharePoint</li>
@@ -116,7 +116,7 @@ Sąlygas visada pasirašo žmogus.</p>
     Sintetinis mėnuo SQLite. Sutaupytos valandos — <b>prielaida</b>.</p>
   </div>
 </div>
-<footer>12-608 · 400 kVA · viršūnė 227,7 kW · 80 % = 320 kW. TS 2 psl. + GIS priedas. make demo · docs/DEMO_SCRIPT.md · {GLYPHS}</footer>
+<footer>12-608, 400 kVA, viršūnė 227,7 kW, 80 % = 320 kW. TS 2 psl. + GIS priedas. make demo, docs/DEMO_SCRIPT.md, {GLYPHS}</footer>
 </div>
 </body></html>
 """

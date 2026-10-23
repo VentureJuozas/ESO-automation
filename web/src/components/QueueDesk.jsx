@@ -17,7 +17,7 @@ function slaLabel(sla) {
   const s = Math.max(0, sla.remaining_s || 0);
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
-  if (sla.due_today) return h > 0 ? `Šiandien · ${h} h` : "Šiandien";
+  if (sla.due_today) return h > 0 ? `Šiandien, ${h} h` : "Šiandien";
   return d > 0 ? `${d} d ${h} h` : `${h} h`;
 }
 
@@ -40,10 +40,10 @@ function InboxCard({ item, reason, setReason, section3, setSection3, busy, onApp
         <b>{item.title}</b>
         <span className={`st ${item.status}`}>{STATUS_LT[item.status] || item.status}</span>
       </header>
-      <p>{item.kw || "—"} kW · {item.solution || item.mix || "—"} · {item.assignee}</p>
+      <p>{item.kw || "—"} kW, {item.solution || item.mix || "—"}, {item.assignee}</p>
       {failed && (
         <>
-          <p className="hint bad-hint">{item.brief_title || "Stiprinimo paketas"} · {item.failed_at || "check_capacity"}</p>
+          <p className="hint bad-hint">{item.brief_title || "Stiprinimo paketas"}, {item.failed_at || "check_capacity"}</p>
           <textarea
             className="edit"
             placeholder="Override priežastis (mažiausiai 8 simboliai)…"
@@ -106,7 +106,7 @@ export default function QueueDesk({
       <div className="desk-main">
         <header className="desk-head">
           <div>
-            <div className="kicker">Vadovo eilė · TP 12-608</div>
+            <div className="kicker">Vadovo eilė, TP 12-608</div>
             <h2>Šiandienos paraiškos</h2>
             <p className="hint">Sintetinės, redaguotos bylos. SLA — 3 darbo dienos (KNOWLEDGE §5, buitinis ≤250 kW).</p>
           </div>
@@ -143,7 +143,7 @@ export default function QueueDesk({
                 <tr key={c.id} className={c.status === "running" ? "hi" : ""} onClick={() => onOpen(c)}>
                   <td>
                     <b>{c.title}</b>
-                    <small> {c.id}{c.data_gap ? " · trūksta duomenų" : ""}</small>
+                    <small> {c.id}{c.data_gap ? ", trūksta duomenų" : ""}</small>
                   </td>
                   <td><span className={`mix ${c.mix}`}>{c.mix}</span></td>
                   <td>{c.kw ?? "—"}</td>

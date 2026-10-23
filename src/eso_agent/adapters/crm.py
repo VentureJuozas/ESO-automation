@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 from eso_agent.store import connect
 
-REDACTED_ADDRESS = "Adresas redaguotas · objektas prie TP 12-608 (koordinatės, be gatvės)"
+REDACTED_ADDRESS = "Adresas redaguotas, objektas prie TP 12-608 (koordinatės, be gatvės)"
 REDACTED_NAME = "Buitinis vartotojas (redaguota)"
 
 

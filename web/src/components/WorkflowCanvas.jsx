@@ -56,7 +56,7 @@ function edgeActive(from, to, events, runningTool, failed, skipped = []) {
   if (from === "check_capacity" && to === "escalate") return failed && (fs === "done" || fs === "stop");
   if (from === "check_capacity" && to === "check_voltage_drop") return !skipped.includes("check_voltage_drop") && fs === "done";
   if (from === "check_future" && to === "escalate") return failed && (fs === "done" || fs === "stop") && !skipped.includes("check_future");
-  if (from === "check_future" && to === "draft_ts_section3") return !failed && fs === "done";
+  if (from === "analysis" && to === "draft_ts_section3") return !failed && fs === "done";
   if (ts === "skip" || fs === "skip") return false;
   if (ts === "run") return true;
   return fs === "done" && (ts === "done" || ts === "stop" || ts === "run");

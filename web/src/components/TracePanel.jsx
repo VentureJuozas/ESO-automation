@@ -38,7 +38,7 @@ export default function TracePanel({ trace, selectedId, onSelect }) {
               <span className="trace-body">
                 <span className="trace-top">
                   <b>{s.tool}</b>
-                  <KindChip kind={s.kind} label={s.kind === "llm" && s.llm_role ? `LLM · ${s.llm_role}` : s.kind_en} />
+                  <KindChip kind={s.kind} label={s.kind === "llm" && s.llm_role ? `LLM (${s.llm_role})` : s.kind_en} />
                   <small>{s.elapsed_ms} ms</small>
                 </span>
                 <span className="trace-io">In: {s.input_summary}</span>

@@ -3,7 +3,7 @@ export default function AffectedList({ cutIn, n1, backup }) {
     <div className="section">
       <h3>Patikimumas</h3>
       <div className="kv">
-        <div><b>Transformatoriai</b><span>{n1?.transformer_count} · N-1 rezervas {n1?.reserve} kW</span></div>
+        <div><b>Transformatoriai</b><span>{n1?.transformer_count}, N-1 rezervas {n1?.reserve} kW</span></div>
         <div><b>Linija</b><span>{backup?.radial ? "Radiali, atsarginis kelias neprarandamas" : "—"}</span></div>
       </div>
       <h3 style={{ marginTop: 14 }}>Atjungiami apskaitos taškai</h3>

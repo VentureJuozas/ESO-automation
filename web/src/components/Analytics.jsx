@@ -22,13 +22,13 @@ export default function Analytics({ data }) {
     <div className="analytics" data-testid="analytics-view" data-spot-target="analytics">
       <header className="desk-head">
         <div>
-          <div className="kicker">Analitika · vadovo vaizdas</div>
+          <div className="kicker">Analitika, vadovo vaizdas</div>
           <h2>Eilės srautas ir kliūtys</h2>
           <p className="hint syn" data-testid="analytics-synthetic">{data.label}</p>
         </div>
         <div className="hud-grid hud-5" style={{ margin: 0, minWidth: 280 }}>
           <div className="hud"><b>{data.throughput_total}</b><span>bylos / {data.days} d.</span></div>
-          <div className="hud"><b>{data.hours_saved_h} h</b><span>sutaupyta · prielaida</span></div>
+          <div className="hud"><b>{data.hours_saved_h} h</b><span>sutaupyta, prielaida</span></div>
           <div className="hud"><b>{data.sla?.at_risk || 0}</b><span>SLA rizika</span></div>
         </div>
       </header>
@@ -54,7 +54,7 @@ export default function Analytics({ data }) {
         </section>
 
         <section className="an-card">
-          <div className="kicker">Kliūtys · kur bylos laukia</div>
+          <div className="kicker">Kliūtys, kur bylos laukia</div>
           <p className="hint">{data.bottleneck?.note}</p>
           <BarRow label="Trūkstami duomenys" value={data.bottleneck?.missing_data_h || 0} max={bottleMax} tone="warn" />
           <BarRow label="Inžinieriaus tvirtinimas" value={data.bottleneck?.engineer_approval_h || 0} max={bottleMax} tone="coral" />
@@ -69,11 +69,11 @@ export default function Analytics({ data }) {
             ))}
           </div>
           <ul className="tax-legend">
-            <li><i className="mix-A" />A · {mix.A || 0}</li>
-            <li><i className="mix-B" />B · {mix.B || 0}</li>
-            <li><i className="mix-C" />C · {mix.C || 0}</li>
-            <li><i className="mix-escalate" />Eskaluota · {mix.escalate || 0}</li>
-            <li><i className="mix-waiting" />Laukia duomenų · {mix.waiting || 0}</li>
+            <li><i className="mix-A" />A, {mix.A || 0}</li>
+            <li><i className="mix-B" />B, {mix.B || 0}</li>
+            <li><i className="mix-C" />C, {mix.C || 0}</li>
+            <li><i className="mix-escalate" />Eskaluota, {mix.escalate || 0}</li>
+            <li><i className="mix-waiting" />Laukia duomenų, {mix.waiting || 0}</li>
           </ul>
         </section>
 

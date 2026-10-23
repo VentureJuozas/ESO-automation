@@ -36,7 +36,7 @@ export default function EscalatePanel({ pkg, audit = [], runId }) {
       {options.length > 0 && (
         <div className="brief-block">
           <div className="ts-toolbar">
-            <h3>Stiprinimo paketas · 5 pakopa</h3>
+            <h3>Stiprinimo paketas, 5 pakopa</h3>
             {runId && (
               <a className="go" href={`/api/runs/${runId}/brief.html`} target="_blank" rel="noreferrer">A4 / PDF</a>
             )}

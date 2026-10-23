@@ -10,7 +10,7 @@ flowchart LR
   API --> G[LangGraph]
   G --> T[Python tools]
   T --> GIS[GIS topology]
-  T --> CAP[Power BI / SCADA]
+  T --> CAP[Smart meter data]
   T --> PRICE[Pricing catalogue]
   T --> REG[TS registry]
   T --> LL[line_load estimator]
@@ -32,7 +32,7 @@ Every opened step uses the same structure:
 
 | Block | Content |
 |---|---|
-| Data source | System, dataset, fields, timestamp (GIS, Power BI/SCADA, CRM, pricing, TS registry) |
+| Data source | System, dataset, fields, timestamp (GIS, smart meter data, CRM, pricing, TS registry) |
 | Requirements and rules | Quoted clause + KNOWLEDGE / SCOPE / standard reference |
 | Calculation | Numbers, formula, gauges, map, A/B/C, breaker table, cost table, load/loss |
 | Result | Pass or fail |

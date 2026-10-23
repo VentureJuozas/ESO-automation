@@ -110,7 +110,7 @@ def build_trace(snap: dict[str, Any] | None = None, events: list[dict[str, Any]]
             "llm": llm,
             "python": python,
             "human": human,
-            "line": f"{llm} LLM · {python} Python · {human} Human",
+            "line": f"{llm} LLM, {python} Python, {human} Human",
         },
         "legend": [
             {"id": "llm", "label": "LLM", "hint": KIND_HINT["llm"]},

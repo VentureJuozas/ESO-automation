@@ -7,7 +7,7 @@ Adapters are the map. Each phase replaces one fixture read with the named ESO sy
 | Adapter | Connect |
 |---|---|
 | GIS | Redacted `Objects_network_power.csv` once privacy is signed off |
-| Capacity | Power BI free transformer capacity + reserved kW |
+| Capacity | Smart meter data: free transformer capacity + reserved kW |
 | CRM | Official application queue (proper-submission clock) |
 
 ## Phase 2 — Authoritative write-back

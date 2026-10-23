@@ -657,7 +657,7 @@ def check_future(parsed: dict[str, Any], capacity: dict[str, Any]) -> dict[str, 
         },
         "source_tags": ["synthetic", "real", "rule"],
         "notes": [
-            "Rezervuotų paraiškų Power BI eksportas neįkeltas; numatytasis 0 kW nestabdo eigos.",
+            "Rezervuotų paraiškų išmaniųjų skaitiklių duomenys neįkelti; numatytasis 0 kW nestabdo eigos.",
             "Teritorijų planai: nėra informacijos.",
         ],
         "ok": True,

@@ -102,7 +102,7 @@ TOOLS = [
         "outputs": "Likutis kitiems, teritorijų planai = nėra info",
         "rule": "SCOPE 4a–4c",
         "rule_ref": {"label": "Prijungimo sąlygų nustatymas — ateitis", "url": ESO_PROCESS, "local": "data/SCOPE.md"},
-        "engineer": "Atsargos matuoklis iki 80 %. Rezervacijos šiame demo = 0 kW (nėra Power BI).",
+        "engineer": "Atsargos matuoklis iki 80 %. Rezervacijos šiame demo = 0 kW (nėra išmaniųjų skaitiklių duomenų).",
         "data": "Rezervacijos default 0 kW (synthetic); TR serija real",
     },
     {
@@ -204,7 +204,7 @@ NEXT_STEPS = [
         "id": "data",
         "title": "Real ESO data sources",
         "items": [
-            "Power BI exports: free transformer capacity, 35–10 kV line loads, reserved consumption capacity",
+            "Smart meter data: free transformer capacity, 35–10 kV line loads, reserved consumption capacity",
             "Internal TR load tool (currently only on the hackathon network)",
             "SharePoint folder of issued TS examples for template variants",
             "Replace synthetic poles/cabinets with Objects_network_power.csv once a redacted coordinate extract is approved",

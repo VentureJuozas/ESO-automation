@@ -4,7 +4,7 @@ export default function BreakerTable({ table = [], selected, requestedKw }) {
   const phases = selected?.phases || table[0]?.phases || 3;
   return (
     <div className="section">
-      <p className="formula">{requestedKw ?? selected?.kw} kW · {phases}F → {selected?.label || `C ${amps} A`}</p>
+      <p className="formula">{requestedKw ?? selected?.kw} kW, {phases}-phase → {selected?.label || `C ${amps} A`}</p>
       <div className="table-wrap">
         <table className="grid-table">
           <thead>

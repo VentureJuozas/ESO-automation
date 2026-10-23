@@ -245,7 +245,7 @@ export default function App() {
   const issuedDoc = snap?.issued?.document || snap?.draft?.document;
   const waiting = status === "awaiting_approval";
   const hud = status === "running" || runningTool
-    ? { cls: "run", text: `Running · ${runningTool || "…"}` }
+    ? { cls: "run", text: `Running ${runningTool || "…"}` }
     : status === "awaiting_approval"
       ? { cls: "wait", text: "Awaiting engineer" }
       : status === "issued"
@@ -253,8 +253,8 @@ export default function App() {
         : status === "escalated"
           ? { cls: "wait", text: "Needs an engineer" }
           : !run && caseRequest
-            ? { cls: "", text: `${caseRequest.kw} kW · ${caseRequest.phases}F · press Start` }
-            : { cls: "", text: caseRequest ? `${caseRequest.kw} kW · ${caseRequest.phases}F` : "11 kW · 3F · L-200 · pole 200/3" };
+            ? { cls: "", text: `${caseRequest.kw} kW, ${caseRequest.phases}-phase, press Start` }
+            : { cls: "", text: caseRequest ? `${caseRequest.kw} kW, ${caseRequest.phases}-phase` : "11 kW, 3-phase, L-200, pole 200/3" };
 
   return (
     <div className="app">
@@ -377,7 +377,7 @@ export default function App() {
             <div className="dock" data-testid="approval-dock">
               <div>
                 <b>Engineer approval</b>
-                <div style={{ color: "var(--muted)", fontSize: 12 }}>§3 · audit · issue</div>
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>§3, audit, issue</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 {run?.id && <a className="go" href={`/api/runs/${run.id}/audit.html`} target="_blank" rel="noreferrer">Audit</a>}

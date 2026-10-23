@@ -55,7 +55,7 @@ function drawMap(el, map, pickable, onPick) {
   if (sub) {
     L.circleMarker([sub.lat, sub.lon], {
       radius: 13, color: "#111", weight: 3, fillColor: "#ffd166", fillOpacity: 1,
-    }).addTo(m).bindPopup(`<b>TP ${sub.id || "12-608"}</b><br>400 kVA · 227.7 kW peak`);
+    }).addTo(m).bindPopup(`<b>TP ${sub.id || "12-608"}</b><br>400 kVA, 227.7 kW peak`);
     L.marker([sub.lat, sub.lon], {
       icon: L.divIcon({ className: "map-label strong", html: "TP 12-608", iconSize: [78, 18], iconAnchor: [-10, 10] }),
       interactive: false,
@@ -74,7 +74,7 @@ function drawMap(el, map, pickable, onPick) {
       weight: selected ? 3 : 2,
       fillColor: selected ? "#ff3b2e" : (colors[pt.feeder] || "#222"),
       fillOpacity: 1,
-    }).addTo(m).bindPopup(`${pt.feeder} · ${kindLabel(pt.kind)} ${pt.id}`);
+    }).addTo(m).bindPopup(`${pt.feeder}, ${kindLabel(pt.kind)} ${pt.id}`);
     bounds.push([pt.lat, pt.lon]);
   });
   if (map.request) {

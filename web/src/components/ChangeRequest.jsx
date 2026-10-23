@@ -34,23 +34,6 @@ export default function ChangeRequest() {
     saveRequests(requests);
   }, [requests]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setRequests((items) => {
-        const now = Date.now();
-        let changed = false;
-        const next = items.map((item) => {
-          if (item.sample || item.stage >= 4) return item;
-          if (now - new Date(item.updatedAt).getTime() < 2200) return item;
-          changed = true;
-          return { ...item, stage: item.stage + 1, updatedAt: new Date().toISOString() };
-        });
-        return changed ? next : items;
-      });
-    }, 800);
-    return () => window.clearInterval(timer);
-  }, []);
-
   const selected = useMemo(
     () => requests.find((item) => item.id === selectedId) || null,
     [requests, selectedId]
@@ -176,7 +159,7 @@ export default function ChangeRequest() {
                       : "wait";
                 return (
                   <li key={stage.id} className={`progress-step ${state}`} data-stage={stage.id}>
-                    <b>{stage.id} · {stage.title}</b>
+                    <b>{stage.id}. {stage.title}</b>
                     <p>{stage.detail}</p>
                   </li>
                 );
@@ -184,9 +167,11 @@ export default function ChangeRequest() {
             </ol>
             {selected && (
               <p className="progress-meta">
-                {plugLabel}
-                {selected.documents.length ? ` · ${selected.documents.map((doc) => doc.name).join(", ")}` : ""}
-                {selected.at ? ` · ${formatWhen(selected.at)}` : ""}
+                {[
+                  plugLabel,
+                  selected.documents.length ? selected.documents.map((doc) => doc.name).join(", ") : "",
+                  selected.at ? formatWhen(selected.at) : "",
+                ].filter(Boolean).join(", ")}
               </p>
             )}
           </section>

@@ -14,8 +14,7 @@ export const PIPELINE_NODES = [
   { id: "locate_connection_point", label: "Connection point", caption: "GIS", x: X[1], y: Y[0], hue: "#4d6a9a", icon: "pin" },
   { id: "select_solution", label: "Solution", caption: "Breaker installation / new cabinet", x: X[2], y: Y[0], hue: "#7a9620", icon: "branch" },
   { id: "size_breaker", label: "Breaker", caption: "§15", x: X[3], y: Y[0], hue: "#7a9620", icon: "branch" },
-  { id: "analysis", label: "Analysis", caption: "", x: X[0], y: Y[1], hue: "#35548a", icon: "grid" },
-  { id: "check_future", label: "Future load", caption: "Headroom", x: X[1], y: Y[1], hue: "#35548a", icon: "grid" },
+  { id: "analysis", label: "Analysis", caption: "", x: X[0], y: Y[1], hue: "#e6b325", icon: "grid" },
   { id: "draft_ts_section3", label: "Draft §3", caption: "TS registry", x: X[0], y: Y[2], hue: "#6d8a22", icon: "send" },
   { id: "estimate_cost", label: "Cost", caption: "Catalogue", x: X[1], y: Y[2], hue: "#6d8a22", icon: "send" },
   { id: "render_map", label: "Map", caption: "GIS annex", x: X[2], y: Y[2], hue: "#6d8a22", icon: "pin" },
@@ -28,8 +27,7 @@ export const PIPELINE_EDGES = [
   ["locate_connection_point", "select_solution"],
   ["select_solution", "size_breaker"],
   ["size_breaker", "analysis"],
-  ["analysis", "check_future"],
-  ["check_future", "draft_ts_section3"],
+  ["analysis", "draft_ts_section3"],
   ["draft_ts_section3", "estimate_cost"],
   ["estimate_cost", "render_map"],
   ["render_map", "engineer_approval"],
@@ -58,7 +56,7 @@ export const ARCH_EDGES = [
 
 export const ADAPTER_NODES = [
   { id: "gis", label: "GIS", caption: "Topology", x: X[0], y: 80, hue: "#4d6a9a", icon: "pin" },
-  { id: "capacity", label: "Power BI", caption: "Capacity", x: X[1], y: 80, hue: "#35548a", icon: "grid" },
+  { id: "capacity", label: "Smart meters", caption: "Load data", x: X[1], y: 80, hue: "#35548a", icon: "grid" },
   { id: "crm", label: "CRM", caption: "Application", x: X[2], y: 80, hue: "#20366c", icon: "doc" },
   { id: "pricing", label: "Pricing", caption: "Catalogue", x: X[3], y: 80, hue: "#7a9620", icon: "send" },
   { id: "registry", label: "TS registry", caption: "Documents", x: X[1], y: 280, hue: "#6d8a22", icon: "doc" },
@@ -80,6 +78,7 @@ export const ANALYSIS_CHILDREN = [
   { id: "check_capacity", label: "Capacity" },
   { id: "check_voltage_drop", label: "Voltage" },
   { id: "check_reliability", label: "Reliability" },
+  { id: "check_future", label: "Future load" },
 ];
 
 export const SOLUTION_OPTIONS = [
@@ -153,9 +152,9 @@ export function nodeSummary(id, ev) {
   const p = o.parsed || {};
   switch (id) {
     case "parse_request":
-      return p.kw != null ? `${p.kw} kW · ${p.phases}F` : "";
+      return p.kw != null ? `${p.kw} kW, ${p.phases}-phase` : "";
     case "locate_connection_point":
-      return o.element_id ? `${o.element_id} · ${o.distance_m} m` : "";
+      return o.element_id ? `${o.element_id}, ${o.distance_m} m` : "";
     case "select_solution":
       return SOLUTION_OPTIONS.find((option) => option.active)?.label || "";
     case "size_breaker":
@@ -192,7 +191,7 @@ export function scenarioStickies(scenario) {
       x: 36,
       y: 516,
       title: scenario.title,
-      body: [scenario.subtitle, scenario.notes].filter(Boolean).join(" · "),
+      body: [scenario.subtitle, scenario.notes].filter(Boolean).join(". "),
     },
   ];
 }

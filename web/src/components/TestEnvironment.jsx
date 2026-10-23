@@ -54,16 +54,18 @@ export default function TestEnvironment() {
                     const state = stage.id < selected.stage ? "done" : stage.id === selected.stage ? "now" : "wait";
                     return (
                       <li key={stage.id} className={`progress-step ${state}`} data-stage={stage.id}>
-                        <b>{stage.id} · {stage.title}</b>
+                        <b>{stage.id}. {stage.title}</b>
                         <p>{stage.detail}</p>
                       </li>
                     );
                   })}
                 </ol>
                 <p className="progress-meta">
-                  {plugLabel}
-                  {selected.documents.length ? ` · ${selected.documents.map((doc) => doc.name).join(", ")}` : ""}
-                  {selected.at ? ` · ${formatWhen(selected.at)}` : ""}
+                  {[
+                    plugLabel,
+                    selected.documents.length ? selected.documents.map((doc) => doc.name).join(", ") : "",
+                    selected.at ? formatWhen(selected.at) : "",
+                  ].filter(Boolean).join(", ")}
                 </p>
               </>
             ) : (

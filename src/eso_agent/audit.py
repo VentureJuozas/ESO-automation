@@ -72,8 +72,8 @@ def render_audit_html(audit: dict[str, Any]) -> str:
   @media print {{ .noprint {{ display: none; }} }}
 </style></head><body>
 <div class="noprint"><button onclick="window.print()">Spausdinti / PDF</button></div>
-<h1>Audito įrašas · {escape(str(audit.get('run_id')))}</h1>
-<p>Būsena: {escape(str(audit.get('status')))} · Scenarijus: {escape(str(audit.get('scenario_id')))} ·
+<h1>Audito įrašas, {escape(str(audit.get('run_id')))}</h1>
+<p>Būsena: {escape(str(audit.get('status')))}, Scenarijus: {escape(str(audit.get('scenario_id')))},
 Priskirta: {escape(str(audit.get('assignee') or '—'))}</p>
 <p class="hash">SHA-256: {escape(str(audit.get('sha256')))}</p>
 <h2>Inžinieriaus veiksmai</h2>

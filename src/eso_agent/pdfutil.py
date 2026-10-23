@@ -44,7 +44,7 @@ def render_ts_pdf(title: str, lines: Iterable[str] | None = None, snap: dict[str
     pdf = _Pdf()
     pdf.h1(title)
     pdf.set_font("DejaVu", size=9)
-    pdf.p(f"Šriftas DejaVu · lietuviškos raidės: {GLYPHS}")
+    pdf.p(f"Šriftas DejaVu, lietuviškos raidės: {GLYPHS}")
     pdf.set_font("DejaVu", size=11)
     for line in lines or []:
         pdf.p(str(line))
@@ -125,7 +125,7 @@ def render_onepager_pdf() -> bytes:
     pdf.h2("Sauga")
     pdf.p("Žmogaus vartai. Override ≥ 8 simboliai. Provenance real/rule/inferred/synthetic. SHA-256. Be vardų.")
     pdf.h2("Toliau — adapteriai")
-    pdf.p("GIS, Power BI / SCADA, CRM, kainos, TS registras. Šiandien mock. Stubai dokumentuoti.")
+    pdf.p("GIS, išmaniųjų skaitiklių duomenys, CRM, kainos, TS registras. Šiandien mock. Stubai dokumentuoti.")
     pdf.h2("Analitika")
     pdf.p("Sintetinis mėnuo SQLite: pralaidumas, medianos, kliūtys, SLA, A/B/C. Valandos — prielaida.")
     pdf.p(f"Šriftas DejaVu. Raidės: {GLYPHS}")

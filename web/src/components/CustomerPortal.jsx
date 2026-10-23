@@ -87,7 +87,7 @@ export default function CustomerPortal({ compact = false, onSubmitted }) {
 
   return (
     <div className={`portal${compact ? " compact" : ""}`} data-testid="customer-portal">
-      <div className="portal-banner">Demonstracinis maketas · neoficialus ESO portalas · be asmens duomenų</div>
+      <div className="portal-banner">Demonstracinis maketas, neoficialus ESO portalas, be asmens duomenų</div>
       <header className="portal-head">
         <div>
           <div className="kicker">Buitinis prijungimas</div>
@@ -100,7 +100,7 @@ export default function CustomerPortal({ compact = false, onSubmitted }) {
             <input data-testid="portal-object" value={form.object_name} onChange={(e) => setForm({ ...form, object_name: e.target.value })} />
           </label>
           <label>Adresas
-            <input value="Adresas redaguotas · tik koordinatės" readOnly />
+            <input value="Adresas redaguotas, tik koordinatės" readOnly />
           </label>
           <div className="portal-row">
             <label>kW
@@ -130,11 +130,11 @@ export default function CustomerPortal({ compact = false, onSubmitted }) {
           <div className="portal-card">
             <div className="kicker">Santrauka</div>
             <b data-testid="portal-object-name">{app.object_name}</b>
-            <p>{app.kw} kW · {app.phases}F · {app.address}</p>
-            <p className="hint">Nr. {app.id} · {app.customer}</p>
+            <p>{app.kw} kW, {app.phases}F, {app.address}</p>
+            <p className="hint">Nr. {app.id}, {app.customer}</p>
             <p data-testid="portal-status">Būsena: <b>{app.status}</b></p>
             {app.decision_by && (
-              <p data-testid="portal-sla">Sprendimo data (SLA): <b>{when(app.decision_by)}</b> · {app.sla?.days} d. d.</p>
+              <p data-testid="portal-sla">Sprendimo data (SLA): <b>{when(app.decision_by)}</b>, {app.sla?.days} d. d.</p>
             )}
           </div>
           <ol className="portal-timeline" data-testid="portal-timeline">

@@ -67,7 +67,7 @@ export function buildTrace(events = [], catalog = []) {
       llm,
       python,
       human,
-      line: `${llm} LLM · ${python} Python · ${human} Human`,
+      line: `${llm} LLM, ${python} Python, ${human} Human`,
     },
   };
 }

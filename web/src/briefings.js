@@ -4,25 +4,25 @@ export const BRIEFINGS = {
   parse_request: {
     source: {
       system: "CRM application",
-      dataset: "Household connection request · TP 12-608",
+      dataset: "Household connection request, TP 12-608",
       fields: "kW, phases, coordinates, object name",
       timestamp: "2026-02-06 19:15 UTC",
     },
     rule: {
       quote: "Household connections ≤ 250 kW are decided within 3 working days.",
-      ref: "KNOWLEDGE.md §5 · ESO connection-conditions process",
+      ref: "KNOWLEDGE.md §5, ESO connection-conditions process",
     },
   },
   locate_connection_point: {
     source: {
       system: "GIS topology",
-      dataset: "Objects_network_power · TP 12-608 poles and cabinets",
+      dataset: "Objects_network_power, TP 12-608 poles and cabinets",
       fields: "lat, lon, feeder, element id, distance",
       timestamp: "as of the 12-608 extract",
     },
     rule: {
       quote: "Connect at the nearest network element on the supplying feeder.",
-      ref: "SCOPE.md · network selection",
+      ref: "SCOPE.md, network selection",
     },
   },
   render_map: {
@@ -34,31 +34,31 @@ export const BRIEFINGS = {
     },
     rule: {
       quote: "The issued TS includes a GIS annex of the connection point.",
-      ref: "Technical requirements · GIS annex",
+      ref: "Technical requirements, GIS annex",
     },
   },
   check_capacity: {
     source: {
-      system: "Power BI / SCADA load data",
-      dataset: "pastotes_load_kas15min · TP 12-608",
+      system: "Smart meter data",
+      dataset: "pastotes_load_kas15min, TP 12-608",
       fields: "peak_kw, nominal_kVA, 80/90 % limits",
       timestamp: "2026-02-06 19:15 UTC",
     },
     rule: {
       quote: "Transformer loading after connection must stay ≤ 80 % of nameplate (320 kW on 400 kVA). 90 % is the hard stop. Line loading must stay ≤ 100 % of conductor ampacity.",
-      ref: "SCOPE 1d · Substations_info · 1e line loading",
+      ref: "SCOPE 1d, Substations_info, 1e line loading",
     },
   },
   check_voltage_drop: {
     source: {
       system: "GIS topology + line-load calculator",
-      dataset: "Skaičiuoklė nuo 2018 m. · L-200 4A-50",
+      dataset: "Skaičiuoklė nuo 2018 m., L-200 4A-50",
       fields: "conductor, length, permitted kW, houses",
       timestamp: "calculator tables in src/line_load.py",
     },
     rule: {
       quote: "Supply voltage must remain ≥ 207 V (230 V − 10 %, LST EN 50160). Conductor loading must stay ≤ 100 % of ampacity.",
-      ref: "LST EN 50160 · KNOWLEDGE voltage quality · line loading",
+      ref: "LST EN 50160, KNOWLEDGE voltage quality, line loading",
     },
   },
   check_reliability: {
@@ -75,7 +75,7 @@ export const BRIEFINGS = {
   },
   check_future: {
     source: {
-      system: "Power BI / SCADA load data",
+      system: "Smart meter data",
       dataset: "Reserved capacity on TP 12-608",
       fields: "peak_kw, reserved_kw, headroom to 80 %",
       timestamp: "2026-02-06 19:15 UTC",
@@ -135,7 +135,7 @@ export const BRIEFINGS = {
   },
   engineer_approval: {
     source: {
-      system: "TS registry · audit log",
+      system: "TS registry, audit log",
       dataset: "This run, SHA-256 of every tool I/O",
       fields: "decision, §3 text, engineer id",
       timestamp: "at the gate",

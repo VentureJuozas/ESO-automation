@@ -10,12 +10,12 @@ export default function MissingPanel({ missing, onSupply, busy }) {
       <ul className="gap-list">
         {gaps.map((g) => (
           <li key={g.id || g.field}>
-            <b>{g.field}</b> · {g.party_lt || g.party}
+            <b>{g.field}</b>, {g.party_lt || g.party}
             <div className="hint">{g.note} Priklauso: {g.why}.</div>
           </li>
         ))}
       </ul>
-      <div className="kicker">Laiško peržiūra · neišsiųsta</div>
+      <div className="kicker">Laiško peržiūra, neišsiųsta</div>
       <pre className="letter">{letter.body}</pre>
       <div className="kicker">Laikinas sprendinys</div>
       <p><b>{prov.solution}</b> — {prov.reason}</p>
