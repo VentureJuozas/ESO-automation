@@ -25,6 +25,8 @@ def test_synthetic_month_and_payload():
     assert payload["mix"]["B"] >= payload["mix"]["A"]
     assert payload["hours_saved_h"] > 0
     assert payload["hours_saved_note"]
+    assert payload["sla"]["at_risk"] >= 1
+    assert payload["sla"]["cases"]
 
 
 def test_analytics_api_and_present_beat():

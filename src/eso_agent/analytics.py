@@ -32,7 +32,7 @@ def _working_days(end: date, n: int = 22) -> list[date]:
 
 def seed_synthetic_month(*, force: bool = False) -> list[dict[str, Any]]:
     existing = load_synthetic_history()
-    if existing and not force:
+    if existing and not force and any(r.get("at_risk") for r in existing):
         return existing
     rng = random.Random(26)
     days = _working_days(date.today(), 22)
@@ -66,11 +66,11 @@ def seed_synthetic_month(*, force: bool = False) -> list[dict[str, Any]]:
             else:
                 status = "issued"
             sla = sla_for(submitted.timestamp(), 11.0)
-            recent = (date.today() - day).days <= 5
+            recent = (date.today() - day).days <= 8
             at_risk = (
                 status != "issued"
                 and recent
-                and (sla["overdue"] or sla["due_today"] or sla["remaining_s"] < 36 * 3600)
+                and (sla["overdue"] or sla["due_today"] or sla["remaining_s"] < 48 * 3600)
             )
             rows.append(
                 {
@@ -92,6 +92,11 @@ def seed_synthetic_month(*, force: bool = False) -> list[dict[str, Any]]:
                     "source": "synthetic",
                 }
             )
+    open_rows = [r for r in rows if r["status"] in {"waiting_data", "escalated"}]
+    for r in open_rows[-5:]:
+        r["at_risk"] = True
+        r["sla_overdue"] = r["status"] == "waiting_data"
+        r["sla_due_today"] = r["status"] != "waiting_data"
     save_synthetic_history(rows)
     return rows
 

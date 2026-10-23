@@ -34,6 +34,17 @@ def scene(lat: float | None, lon: float | None, element_id: str | None, feeder: 
     if not focus:
         focus = els[:24]
     extras = [e for e in els if e.get("id") == element_id]
+    origin = (float(lat), float(lon)) if lat and lon else (station["lat"], station["lon"])
+    nearby = [
+        e
+        for e in focus
+        if haversine_m(origin[0], origin[1], e["lat"], e["lon"]) < 90
+        or haversine_m(station["lat"], station["lon"], e["lat"], e["lon"]) < 70
+        or e.get("id") == element_id
+    ]
+    if len(nearby) < 4:
+        nearby = sorted(focus, key=lambda e: haversine_m(origin[0], origin[1], e["lat"], e["lon"]))[:8]
+    focus = nearby or focus
     pts = [(station["lat"], station["lon"])]
     if lat and lon:
         pts.append((float(lat), float(lon)))
