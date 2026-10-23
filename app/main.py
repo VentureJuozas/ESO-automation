@@ -349,6 +349,15 @@ async def rerun(rid: str, body: RerunBody):
     return await rerun_from(rid, body.from_tool, body.overrides)
 
 
+@app.get("/api/runs/{rid}/trace")
+def run_trace(rid: str):
+    if rid not in RUNS:
+        raise HTTPException(404)
+    from eso_agent.trace import build_trace
+
+    return build_trace(snapshot(RUNS[rid]))
+
+
 @app.get("/api/runs/{rid}/ts.html")
 def ts_html(rid: str):
     if rid not in RUNS:

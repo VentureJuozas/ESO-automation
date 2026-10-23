@@ -60,7 +60,7 @@ def test_onepager_and_adapters_api():
         assert ad["mode"] == "mock"
         assert len(ad["adapters"]) == 5
         pack = c.get("/api/present").json()
-        assert 270000 <= pack["total_ms"] <= 300000
+        assert 270000 <= pack["total_ms"] <= 315000
         assert pack["beats"][0]["dwell_ms"] == 20000
         assert any(b["id"] == "split" for b in pack["beats"])
         assert any(b["id"] == "integrations" for b in pack["beats"])

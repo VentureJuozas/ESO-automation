@@ -170,6 +170,23 @@ BEATS: list[dict[str, Any]] = [
         "dwell_ms": 20000,
     },
     {
+        "id": "trace",
+        "view": "case",
+        "apply": "hero",
+        "select": "parse_request",
+        "spot": "trace",
+        "overlay": "kinds",
+        "lt": {
+            "title": "Agento sekimas",
+            "say": "Kiekvienas žingsnis — matomas įrankio kvietimas. LLM skaito ir formuluoja. Python sprendžia. Žmogus pasirašo.",
+        },
+        "en": {
+            "title": "Agent trace",
+            "say": "Every step is a visible tool call. The LLM reads and phrases. Python decides. A human signs.",
+        },
+        "dwell_ms": 18000,
+    },
+    {
         "id": "integrations",
         "view": "integrations",
         "spot": "canvas",
@@ -225,6 +242,7 @@ def frozen_pack() -> dict[str, Any]:
         return _PACK
     from eso_agent.analytics import analytics_payload
     from eso_agent.audit import build_audit
+    from eso_agent.trace import build_trace
     from eso_agent.backtest import LAST_GALLERY, run_gallery
     from eso_agent.engine import RUNS, run_sync_until_interrupt
     from eso_agent.queue import queue_public, reset_queue
@@ -269,6 +287,7 @@ def frozen_pack() -> dict[str, Any]:
         "queue_after": after,
         "audit": {"sha256": audit.get("sha256"), "tool_count": len(audit.get("tools") or [])},
         "analytics": analytics_payload(),
+        "trace": build_trace(hero),
         "autoplay_ms": BEATS[0]["dwell_ms"],
         "total_ms": TOTAL_MS,
         "frozen": True,

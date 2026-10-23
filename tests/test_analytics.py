@@ -38,5 +38,5 @@ def test_analytics_api_and_present_beat():
         assert any(b["id"] == "analytics" for b in pack["beats"])
         assert pack["analytics"]["synthetic"] is True
         assert pack["total_ms"] == TOTAL_MS
-        assert 270000 <= TOTAL_MS <= 300000
+        assert 270000 <= TOTAL_MS <= 315000
         assert any(b["id"] == "analytics" for b in BEATS)

@@ -15,6 +15,8 @@ import WhatIfBar from "./components/WhatIfBar.jsx";
 import CustomerPortal from "./components/CustomerPortal.jsx";
 import AdapterSheet from "./components/AdapterSheet.jsx";
 import Analytics from "./components/Analytics.jsx";
+import TracePanel from "./components/TracePanel.jsx";
+import { buildTrace } from "./trace.js";
 import { t } from "./i18n.js";
 import { scenarioStickies } from "./workflow.js";
 
@@ -52,6 +54,7 @@ export default function App() {
   const [presentPlaying, setPresentPlaying] = useState(false);
   const [adapters, setAdapters] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [kindOverlay, setKindOverlay] = useState(false);
   const stopRef = useRef(() => {});
 
   function refreshQueue() {
@@ -373,6 +376,7 @@ export default function App() {
     }
     if (beat.apply === "gallery") setGallery((g) => ({ ...(g || {}), last: pack.gallery }));
     if (beat.view === "analytics" && pack.analytics) setAnalytics(pack.analytics);
+    setKindOverlay(beat.overlay === "kinds" || beat.id === "trace");
     if (beat.select) {
       setSelected(beat.select);
       setInspectorOpen(true);
@@ -513,6 +517,8 @@ export default function App() {
             ? "Integracijos"
           : view === "analytics"
             ? "Analitika"
+          : kindOverlay && view === "case"
+            ? "Agento sekimas"
             : <>Paraiškos <span>/</span> {current?.title || (scenarioId === "intake" ? "Nauja paraiška" : scenarioId === "queue" ? (run?.title || "Eilės byla") : "Naujas vartotojas, TP 12-608")}</>;
 
   return (
@@ -534,6 +540,10 @@ export default function App() {
           <button className={`item${view === "analytics" ? " on" : ""}`} type="button" data-testid="nav-analytics" onClick={() => { setView("analytics"); getJSON("/api/analytics").then(setAnalytics).catch(() => {}); }}>
             <b>{t(lang, "analytics")}</b>
             <small>Sintetinis mėnuo · prielaida</small>
+          </button>
+          <button className={`item${kindOverlay && view === "case" ? " on" : ""}`} type="button" data-testid="nav-trace" onClick={() => { setView("case"); setKindOverlay(true); setInspectorOpen(true); }}>
+            <b>Agento sekimas</b>
+            <small>LLM / Python / Žmogus</small>
           </button>
           <button className={`item intake-nav${view === "intake" || scenarioId === "intake" ? " on" : ""}`} type="button" onClick={openIntake}>
             <b>Nauja paraiška</b>
@@ -680,9 +690,12 @@ export default function App() {
                   skipped={skipped}
                   selectedId={selected}
                   onSelect={pickNode}
+                  architecture={architecture}
                   stickies={scenarioStickies(current || (scenarioId === "intake" || scenarioId === "queue" ? { title: run?.title || "Eilės byla", subtitle: run?.assignee || "Vadovo eilė", notes: "Sintetinė / redaguota paraiška. Be asmens duomenų." } : null))}
                   inspectorOpen={inspectorOpen}
                   followId={runningTool}
+                  kindOverlay={kindOverlay}
+                  onToggleOverlay={(on) => { setKindOverlay(on); if (on) setInspectorOpen(true); }}
                 />
               )}
               {view === "integrations" && (
@@ -715,7 +728,14 @@ export default function App() {
             </div>
             {view !== "queue" && view !== "gallery" && view !== "customer" && view !== "split" && view !== "analytics" && (inspectorOpen ? (
               <div className="inspector">
-                {view === "case" && (
+                {view === "case" && kindOverlay && (
+                  <TracePanel
+                    trace={buildTrace(events, architecture?.tools || [])}
+                    selectedId={selected}
+                    onSelect={pickNode}
+                  />
+                )}
+                {view === "case" && !kindOverlay && (
                   <StepSheet
                     toolId={selected}
                     event={selectedEvent}

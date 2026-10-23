@@ -76,6 +76,20 @@ test("fail branch shows reinforcement brief", async ({ page, request }) => {
   expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
 });
 
+test("agent trace overlay lists LLM Python and human", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("scenario-hero").click();
+  await page.getByTestId("run-flow").click();
+  await expect(page.getByTestId("kind-overlay")).toBeVisible({ timeout: 20000 });
+  await page.getByTestId("kind-overlay").click();
+  await expect(page.getByTestId("trace-panel")).toBeVisible();
+  await expect(page.getByTestId("trace-stats")).toContainText("LLM");
+  await expect(page.getByTestId("trace-stats")).toContainText("žmogaus");
+  await expect(page.getByTestId("trace-legend")).toContainText("Python");
+  await expect(page.getByTestId("canvas-kind-legend")).toBeVisible();
+  await expect(page.getByTestId("trace-step-parse_request")).toBeVisible({ timeout: 20000 });
+});
+
 test("what-if 11 to 100 kW flips to escalate", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("scenario-hero").click();

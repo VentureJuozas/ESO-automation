@@ -19,6 +19,7 @@ import {
   nodeSummary,
 } from "../workflow.js";
 import { Bang, Check, Icon } from "../icons.jsx";
+import { classify } from "../trace.js";
 
 function nodeState(id, events, runningTool, failed, skipped = []) {
   if (skipped.includes(id)) return "skip";
@@ -72,6 +73,8 @@ export default function WorkflowCanvas({
   inspectorOpen = true,
   followId,
   skipped = [],
+  kindOverlay = false,
+  onToggleOverlay,
 }) {
   const nodes = mode === "adapters" ? ADAPTER_NODES : mode === "arch" ? ARCH_NODES : PIPELINE_NODES;
   const edges = mode === "adapters" ? ADAPTER_EDGES : mode === "arch" ? ARCH_EDGES : PIPELINE_EDGES;
@@ -212,13 +215,31 @@ export default function WorkflowCanvas({
       onWheel={onWheel}
       role="application"
       aria-label="Prijungimo eigos drobė"
+      data-kinds={kindOverlay ? "on" : "off"}
     >
       <div className="wf-toolbar" onPointerDown={(e) => e.stopPropagation()}>
         <button type="button" className="go" onClick={() => zoom(-0.12)} aria-label="Sumažinti">−</button>
         <span className="zoom-readout">{Math.round(cam.k * 100)}%</span>
         <button type="button" className="go" onClick={() => zoom(0.12)} aria-label="Padidinti">+</button>
         <button type="button" className="go" onClick={fitView}>Talpinti</button>
+        {mode === "pipeline" && (
+          <button
+            type="button"
+            className={`go${kindOverlay ? " on" : ""}`}
+            data-testid="kind-overlay"
+            onClick={() => onToggleOverlay?.(!kindOverlay)}
+          >
+            LLM / Python / Žmogus
+          </button>
+        )}
       </div>
+      {kindOverlay && mode === "pipeline" && (
+        <ul className="kind-legend canvas-legend" data-testid="canvas-kind-legend">
+          <li><i className="k-llm" />LLM</li>
+          <li><i className="k-tool" />Python</li>
+          <li><i className="k-human" />Žmogus</li>
+        </ul>
+      )}
       <div
         className={`wf-world${dragging ? " dragging" : ""}`}
         style={{
@@ -238,6 +259,15 @@ export default function WorkflowCanvas({
             <marker id="arrow-run" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff6d5a" />
             </marker>
+            <marker id="arrow-llm" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#d97706" />
+            </marker>
+            <marker id="arrow-tool" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f766e" />
+            </marker>
+            <marker id="arrow-human" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff6d5a" />
+            </marker>
           </defs>
           {edges.map(([a, b]) => {
             const na = lookup(a);
@@ -245,12 +275,16 @@ export default function WorkflowCanvas({
             if (!na || !nb) return null;
             const on = mode === "arch" ? true : edgeActive(a, b, events, runningTool, failed, skipped);
             const running = runningTool === b;
+            const ek = kindOverlay && mode === "pipeline" ? classify(b, lastEvent(b, events), architecture?.tools) : "";
+            const marker = kindOverlay && ek
+              ? `url(#arrow-${ek})`
+              : running ? "url(#arrow-run)" : on ? "url(#arrow-on)" : "url(#arrow)";
             return (
               <path
                 key={`${a}-${b}`}
                 d={edgePath(na, nb)}
-                className={`edge${on ? " on" : ""}${running ? " flow" : ""}`}
-                markerEnd={running ? "url(#arrow-run)" : on ? "url(#arrow-on)" : "url(#arrow)"}
+                className={`edge${on ? " on" : ""}${running ? " flow" : ""}${ek ? ` k-${ek}` : ""}`}
+                markerEnd={marker}
               />
             );
           })}
@@ -275,12 +309,13 @@ export default function WorkflowCanvas({
               ? `${adapter?.mode || "mock"} · ${n.caption}`
             : mode === "arch" ? (arch?.note || n.caption) : (nodeSummary(n.id, ev) || n.caption);
           const ports = portMap[n.id] || new Set(["left", "right"]);
+          const nk = kindOverlay && mode === "pipeline" ? classify(n.id, ev, architecture?.tools) : "";
           return (
             <button
               key={n.id}
               type="button"
               data-node={n.id}
-              className={`n8n-node ${st}${selectedId === n.id ? " on" : ""}${hidden ? " ghost" : ""}`}
+              className={`n8n-node ${st}${selectedId === n.id ? " on" : ""}${hidden ? " ghost" : ""}${nk ? ` k-${nk}` : ""}`}
               style={{ left: n.x, top: n.y, "--hue": n.hue }}
               onClick={() => onSelect(n.id)}
               aria-pressed={selectedId === n.id}

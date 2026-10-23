@@ -65,10 +65,14 @@ Household form: object, redacted address, kW, phases, map pick. Tracker: gauta �
 
 Python decides. LLM only parses text and may rephrase §3. Offline if no key.
 
+## Agento sekimas
+
+For a selected run the n8n canvas can show an **LLM / Python / Žmogus** overlay. Nodes and edges are colour-coded by kind. A trace timeline lists each tool call: step, name, kind (LLM parse/phrasing, deterministic Python, or human gate), summarised inputs/outputs with expandable JSON, duration, provenance tags, and the rule / KNOWLEDGE section. Header: `X LLM kvietimai · Y deterministiniai įrankiai · 1 žmogaus vartai`. `/api/runs/{id}/trace` returns the same payload.
+
 ## Provenance, approval, queue, back-test
 
 `real` | `rule` | `inferred` | `synthetic`. Interrupt at approval or escalate or waiting_data. Gallery in-scope 95 %, overall 84 %, tool errors 0. What-if fill 6/7.
 
 ## Presentation
 
-**Pristatymas**: frozen beats, LT/EN, arrows, autoplay 8 s with pause. Split beat shows customer mock + desk. Integracijos beat shows adapters. A4 leave-behind at `/api/onepager.html`.
+**Pristatymas**: frozen beats, LT/EN, arrows, per-beat autoplay (~5 min, under 5:15) with pause. Split beat shows customer mock + desk. **Agento sekimas** beat turns on the kind overlay. Integracijos / Analitika follow. A4 leave-behind at `/api/onepager.html`.

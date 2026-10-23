@@ -1,5 +1,9 @@
 # Changelog
 
+## Round 9 — Agento sekimas
+
+Visible LangGraph tool-call trace next to the n8n canvas. Overlay **LLM / Python / Žmogus** colour-codes nodes and edges. Each step lists kind (LLM parse/phrasing, deterministic Python, or human gate), summarised I/O with expandable JSON, duration, provenance tags, and the rule / KNOWLEDGE section. Header: X LLM calls, Y deterministic tools, 1 human gate. One present beat; autoplay stays under 5:15. Playwright asserts the overlay.
+
 ## Round 8 — Official TS + Analitika
 
 Two-page official-looking TS demo blank (no ESO logo): header, 26-E-DEMO-… number, dates, redacted parties, technical parameters, numbered conditions, cost and obligations, engineer signature from the audit, SHA-256 footer. Page 2 is an offline GIS annex (connection point, pole/cabinet, line, legend, scale). Lithuanian glyphs stay in DejaVu. Playwright asserts both pages.
