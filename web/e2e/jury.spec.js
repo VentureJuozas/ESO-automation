@@ -6,13 +6,18 @@ test("ESO helper single-case flow, step panels, approve, TS PDF", async ({ page,
   await page.goto("/");
   await expect(page.getByTestId("app-title")).toHaveText("ESO helper");
   await expect(page).toHaveTitle("ESO helper");
+  await page.getByTestId("nav-flow").click();
   await expect(page.getByTestId("sidebar")).toContainText("Application");
   await expect(page.getByTestId("sidebar")).toContainText("Connection point");
   await expect(page.getByTestId("sidebar")).toContainText("Checks");
   await expect(page.getByTestId("sidebar")).toContainText("Solution");
   await expect(page.getByTestId("sidebar")).toContainText("Issue");
-  await expect(page.getByTestId("request-bar")).toContainText("11 kW");
-  await expect(page.getByTestId("request-bar")).toContainText("200/3");
+  await expect(page.getByTestId("request-bar")).toContainText("Requested power");
+  await expect(page.getByTestId("request-bar")).toContainText("11 kW, 3-phase");
+  await expect(page.getByTestId("request-bar")).toContainText("Coordinates");
+  await expect(page.getByTestId("request-bar")).toContainText("pole 200/3");
+  await expect(page.getByTestId("request-bar")).toContainText("New pole-mounted cabinet");
+  await expect(page.getByTestId("request-bar")).not.toContainText("·");
   await expect(page.locator("body")).not.toContainText("Paleisti visas");
   await expect(page.locator("body")).not.toContainText("Atstatyti demo");
   await expect(page.locator("body")).not.toContainText("n8n");
@@ -80,6 +85,7 @@ test("ESO helper single-case flow, step panels, approve, TS PDF", async ({ page,
 
 test("sidebar groups collapse and select steps", async ({ page }) => {
   await page.goto("/");
+  await page.getByTestId("nav-flow").click();
   const checks = page.getByTestId("group-checks");
   await expect(checks.getByTestId("step-check_capacity")).toBeVisible();
   await checks.getByRole("button", { name: /Checks/ }).click();

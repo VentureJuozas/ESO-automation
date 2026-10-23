@@ -14,7 +14,7 @@ export const STEP_LABEL = {
   check_voltage_drop: "Voltage",
   check_reliability: "Reliability",
   check_future: "Future load",
-  select_solution: "Solution A/B/C",
+  select_solution: "Solution",
   size_breaker: "Breaker",
   estimate_cost: "Cost",
   draft_ts_section3: "Draft §3",

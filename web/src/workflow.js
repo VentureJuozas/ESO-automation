@@ -12,7 +12,7 @@ const Y = [36, 196, 356, 516];
 export const PIPELINE_NODES = [
   { id: "parse_request", label: "Read application", caption: "CRM", x: X[0], y: Y[0], hue: "#ff6d5a", icon: "doc" },
   { id: "locate_connection_point", label: "Connection point", caption: "GIS", x: X[1], y: Y[0], hue: "#3b82f6", icon: "pin" },
-  { id: "select_solution", label: "Solution", caption: "A / B / C", x: X[2], y: Y[0], hue: "#d97706", icon: "branch" },
+  { id: "select_solution", label: "Solution", caption: "Breaker installation / new cabinet", x: X[2], y: Y[0], hue: "#d97706", icon: "branch" },
   { id: "size_breaker", label: "Breaker", caption: "§15", x: X[3], y: Y[0], hue: "#d97706", icon: "branch" },
   { id: "check_capacity", label: "Capacity", caption: "SCADA", x: X[0], y: Y[1], hue: "#7c5cfc", icon: "grid" },
   { id: "check_voltage_drop", label: "Voltage", caption: "50160", x: X[1], y: Y[1], hue: "#7c5cfc", icon: "grid" },
@@ -79,6 +79,12 @@ export const ADAPTER_EDGES = [
 export const ADAPTER_STICKIES = [];
 
 export const ARCH_STICKIES = [];
+
+export const SOLUTION_OPTIONS = [
+  { id: "cabinet", label: "Breaker installation / new cabinet", active: true },
+  { id: "line", label: "Line reinforcement", active: false },
+  { id: "transformer", label: "Transformer replacement", active: false },
+];
 
 export function nodeById(id, nodes = PIPELINE_NODES) {
   return nodes.find((n) => n.id === id);
@@ -149,7 +155,7 @@ export function nodeSummary(id, ev) {
     case "locate_connection_point":
       return o.element_id ? `${o.element_id} · ${o.distance_m} m` : "";
     case "select_solution":
-      return o.id ? `Solution ${o.id}` : "";
+      return SOLUTION_OPTIONS.find((option) => option.active)?.label || "";
     case "size_breaker":
       return o.label || (o.amps != null ? `C ${o.amps} A` : "");
     case "check_capacity":

@@ -205,10 +205,10 @@ export default function App() {
         </header>
 
         <div className="request-bar" data-testid="request-bar">
-          <div><b>Request</b><span>11 kW · 3-phase</span></div>
-          <div><b>Point</b><span>54.55929, 25.27955</span></div>
-          <div><b>Network</b><span>TP 12-608 · L-200 · 200/3</span></div>
-          <div><b>Solution</b><span>B · C 20 A</span></div>
+          <div><b>Requested power</b><span>11 kW, 3-phase</span></div>
+          <div><b>Coordinates</b><span>54.55929, 25.27955</span></div>
+          <div><b>Network</b><span>TP 12-608, feeder L-200, pole 200/3</span></div>
+          <div><b>Proposed solution</b><span>New pole-mounted cabinet, 16 mm² service, 20 A breaker</span></div>
         </div>
 
         <div className="canvas" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>

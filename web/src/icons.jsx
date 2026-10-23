@@ -6,6 +6,8 @@ export const ICONS = {
   send: "M4 12l16-7-6 16-2.5-6.5L4 12z",
   check: "M5 12.5l5 5L19 7",
   bang: "M12 7v7M12 17.5v.5",
+  flask: "M9 3h6M10 3v6L5.5 18A2.2 2.2 0 0 0 7.5 21h9a2.2 2.2 0 0 0 2-3L14 9V3",
+  plus: "M12 5v14M5 12h14",
 };
 
 export function Icon({ name, size = 24 }) {

@@ -11,12 +11,12 @@ import {
   NODE_W,
   PIPELINE_EDGES,
   PIPELINE_NODES,
+  SOLUTION_OPTIONS,
   WORLD_H,
   WORLD_W,
   edgePath,
   nodeById,
   nodePorts,
-  nodeSummary,
 } from "../workflow.js";
 import { Bang, Check, Icon } from "../icons.jsx";
 import { classify } from "../trace.js";
@@ -51,6 +51,83 @@ function edgeActive(from, to, events, runningTool, failed, skipped = []) {
   if (ts === "skip" || fs === "skip") return false;
   if (ts === "run") return true;
   return fs === "done" && (ts === "done" || ts === "stop" || ts === "run");
+}
+
+function SolutionNode({ n, st, selected, onSelect, ports, nk }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDocClick(event) {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    const timer = window.setTimeout(() => document.addEventListener("click", onDocClick), 0);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={rootRef}
+      data-node={n.id}
+      data-testid="solution-node"
+      className={`n8n-node solution-node ${st}${selected ? " on" : ""}${open ? " open" : ""}${nk ? ` k-${nk}` : ""}`}
+      style={{ left: n.x, top: n.y, "--hue": n.hue }}
+    >
+      {[...ports].map((side) => (
+        <span key={side} className={`n8n-port port-${side}${st === "run" ? " live" : ""}`} />
+      ))}
+      <button
+        type="button"
+        className="solution-trigger"
+        data-testid="solution-menu-button"
+        aria-pressed={selected}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={n.label}
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(n.id);
+          setOpen((value) => !value);
+        }}
+      >
+        <span className="n8n-ico"><Icon name={n.icon} size={20} /></span>
+        <span className="n8n-copy"><b>{n.label}</b></span>
+        <i className="chev" aria-hidden="true" />
+      </button>
+      {open && (
+        <ul className="solution-menu" role="listbox" aria-label="Solution options" data-testid="solution-menu">
+          {SOLUTION_OPTIONS.map((option) => (
+            <li key={option.id}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={option.active}
+                disabled={!option.active}
+                data-testid={`solution-option-${option.id}`}
+                onClick={() => setOpen(false)}
+              >
+                {option.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {st === "done" && (
+        <span className="n8n-pip done"><Check /></span>
+      )}
+      {st === "stop" && <span className="n8n-pip stop"><Bang /></span>}
+      {st === "skip" && <span className="n8n-pip skip" title="Skipped">–</span>}
+      {st === "run" && <span className="n8n-pip run" />}
+    </div>
+  );
 }
 
 function lastEvent(id, events) {
@@ -301,15 +378,22 @@ export default function WorkflowCanvas({
             ? (adapter?.mode === "stub" ? "stop" : "done")
             : mode === "arch" ? (selectedId === n.id ? "run" : "wait") : nodeState(n.id, events, runningTool, failed, skipped);
           const hidden = mode === "pipeline" && n.id === "escalate" && !failed && (st === "wait" || st === "idle");
-          const arch = architecture?.layers?.find((l) => l.id === n.id);
           const ev = lastEvent(n.id, events);
-          const summary = st === "skip"
-            ? "Skipped"
-            : mode === "adapters"
-              ? n.caption
-            : mode === "arch" ? (arch?.note || n.caption) : (nodeSummary(n.id, ev) || n.caption);
           const ports = portMap[n.id] || new Set(["left", "right"]);
           const nk = kindOverlay && mode === "pipeline" ? classify(n.id, ev, architecture?.tools) : "";
+          if (mode === "pipeline" && n.id === "select_solution") {
+            return (
+              <SolutionNode
+                key={n.id}
+                n={n}
+                st={st}
+                selected={selectedId === n.id}
+                onSelect={onSelect}
+                ports={ports}
+                nk={nk}
+              />
+            );
+          }
           return (
             <button
               key={n.id}
@@ -327,7 +411,6 @@ export default function WorkflowCanvas({
               <span className="n8n-ico"><Icon name={n.icon} size={20} /></span>
               <span className="n8n-copy">
                 <b>{n.label}</b>
-                <small>{summary}</small>
               </span>
               {st === "done" && (
                 <span className="n8n-pip done" title={`${ev?.elapsed_ms ?? 0} ms`}>
@@ -337,9 +420,6 @@ export default function WorkflowCanvas({
               {st === "stop" && <span className="n8n-pip stop"><Bang /></span>}
               {st === "skip" && <span className="n8n-pip skip" title="Skipped">–</span>}
               {st === "run" && <span className="n8n-pip run" />}
-              {st === "done" && ev?.elapsed_ms != null && (
-                <span className="n8n-ms">{ev.elapsed_ms} ms</span>
-              )}
             </button>
           );
         })}
