@@ -11,6 +11,7 @@ from eso_agent.brief import build_reinforcement_brief
 from eso_agent.document import REDACTED_ADDRESS, REDACTED_CUSTOMER, build_ts_document
 from eso_agent.llm import llm_mode, parse_request as llm_parse, phrase_ts_offline, phrase_ts_with_llm
 from eso_agent.models import RequestForm
+from eso_agent.adapters import get_adapters
 from eso_agent.network import STATION, haversine_m, load_network, nearest_element
 from eso_agent.rules import (
     CABINET_AT_PLOT_M,
@@ -97,12 +98,13 @@ def parse_request(text: str = "", form: dict[str, Any] | None = None) -> dict[st
 
 
 def locate_connection_point(parsed: dict[str, Any]) -> dict[str, Any]:
-    found = nearest_element(parsed["lat"], parsed["lon"])
+    gis = get_adapters().gis
+    found = gis.nearest(parsed["lat"], parsed["lon"])
     el = found["element"]
     feeder = found["feeder"]
     cabinet_at_plot = el["kind"] == "cabinet" and found["distance_m"] <= CABINET_AT_PLOT_M
     ranked = []
-    for cand in load_network()["elements"]:
+    for cand in gis.load_network()["elements"]:
         d = haversine_m(parsed["lat"], parsed["lon"], cand["lat"], cand["lon"])
         ranked.append({"id": cand["id"], "kind": cand["kind"], "feeder": cand["feeder"], "distance_m": round(d, 1)})
     ranked.sort(key=lambda x: x["distance_m"])
@@ -252,11 +254,12 @@ def check_capacity(parsed: dict[str, Any], location: dict[str, Any], breaker: di
     cabinet_fuse = 63 if parsed["phases"] == 1 else 100
     cabinet_ok = cabinet_fuse >= breaker["outputs"]["amps"]
 
-    peak = STATION["peak_kw"]
+    limits = get_adapters().capacity.limits()
+    peak = limits["peak_kw"]
     conservative = peak + new_kw
     coincident = peak + new_kw * k_station
-    limit80 = STATION["limit_80_kw"]
-    limit90 = STATION["limit_90_kw"]
+    limit80 = limits["limit_80_kw"]
+    limit90 = limits["limit_90_kw"]
     # Binding check: SCOPE 1d peak + requested kW vs 80%/90%.
     # Measured peak already includes existing diversity; adding full new kW is conservative
     # for a household that may coincide with the winter evening peak.
@@ -792,6 +795,9 @@ def issue_ts(
     document = build_ts_document(
         parsed, location, solution, breaker, section3,
         issued=True, ts_number=number, issue_date=issued, valid_until=valid, run_id=run_id,
+    )
+    get_adapters().registry.register(
+        {"ts_number": number, "run_id": run_id, "kw": parsed.get("kw"), "solution": solution["outputs"]["id"]}
     )
     return _annotate({
         "tool": "issue_ts",

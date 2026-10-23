@@ -117,4 +117,9 @@ def clear_all() -> None:
     conn.execute("DELETE FROM runs")
     conn.execute("DELETE FROM queue")
     conn.execute("DELETE FROM meta")
+    try:
+        conn.execute("DELETE FROM portal_apps")
+        conn.execute("DELETE FROM ts_registry")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()

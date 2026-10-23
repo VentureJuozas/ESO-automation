@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ADAPTER_EDGES,
+  ADAPTER_NODES,
+  ADAPTER_STICKIES,
   ARCH_EDGES,
   ARCH_NODES,
   ARCH_STICKIES,
@@ -70,9 +73,9 @@ export default function WorkflowCanvas({
   followId,
   skipped = [],
 }) {
-  const nodes = mode === "arch" ? ARCH_NODES : PIPELINE_NODES;
-  const edges = mode === "arch" ? ARCH_EDGES : PIPELINE_EDGES;
-  const notes = stickies || (mode === "arch" ? ARCH_STICKIES : []);
+  const nodes = mode === "adapters" ? ADAPTER_NODES : mode === "arch" ? ARCH_NODES : PIPELINE_NODES;
+  const edges = mode === "adapters" ? ADAPTER_EDGES : mode === "arch" ? ARCH_EDGES : PIPELINE_EDGES;
+  const notes = stickies || (mode === "adapters" ? ADAPTER_STICKIES : mode === "arch" ? ARCH_STICKIES : []);
   const lookup = (id) => nodeById(id, nodes);
   const wrapRef = useRef(null);
   const camRef = useRef({ x: 24, y: 24, k: 1 });

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "node --input-type=module -e \"import fs from 'fs'; const s=fs.readFileSync('src/App.jsx','utf8'); if (/eso\\.lt\\/logo|ESO-official-mark/i.test(s)) process.exit(1);\""
   },
   "dependencies": {
     "leaflet": "^1.9.4",

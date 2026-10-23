@@ -261,8 +261,12 @@ NEXT_STEPS = [
 
 
 def architecture_payload() -> dict:
+    from eso_agent.adapters import adapter_catalog, adapter_mode
+
     return {
         "llm_mode": llm_mode(),
+        "adapter_mode": adapter_mode(),
+        "adapters": adapter_catalog(),
         "manual_time_note": MANUAL_TIME_ASSUMPTION_NOTE,
         "tools": TOOLS,
         "next_steps": NEXT_STEPS,

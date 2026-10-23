@@ -12,6 +12,8 @@ import Gallery from "./components/Gallery.jsx";
 import PresentGuide from "./components/PresentGuide.jsx";
 import MissingPanel from "./components/MissingPanel.jsx";
 import WhatIfBar from "./components/WhatIfBar.jsx";
+import CustomerPortal from "./components/CustomerPortal.jsx";
+import AdapterSheet from "./components/AdapterSheet.jsx";
 import { t } from "./i18n.js";
 import { scenarioStickies } from "./workflow.js";
 
@@ -46,6 +48,8 @@ export default function App() {
   const [presentPack, setPresentPack] = useState(null);
   const [whatIf, setWhatIf] = useState({ kw: 11, phases: 3, distance_m: 66, pending_kw: 0 });
   const [whatIfBusy, setWhatIfBusy] = useState(false);
+  const [presentPlaying, setPresentPlaying] = useState(false);
+  const [adapters, setAdapters] = useState([]);
   const stopRef = useRef(() => {});
 
   function refreshQueue() {
@@ -63,6 +67,7 @@ export default function App() {
     getJSON("/api/runs").then(setHistory).catch(() => {});
     refreshQueue();
     getJSON("/api/gallery").then(setGallery).catch(() => {});
+    getJSON("/api/adapters").then((a) => setAdapters(a.adapters || [])).catch(() => {});
     getJSON("/api/health").then((h) => {
       if (h.offline) document.body.dataset.offline = "1";
     }).catch(() => { document.body.dataset.offline = "1"; });
@@ -368,6 +373,7 @@ export default function App() {
     setPresentStep(0);
     setQueue(pack.queue_before);
     applyBeat(pack, 0);
+    setPresentPlaying(true);
   }
 
   function goPresent(delta) {
@@ -380,13 +386,31 @@ export default function App() {
   useEffect(() => {
     if (!presentOn) return undefined;
     const onKey = (e) => {
-      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goPresent(1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); goPresent(1); }
       if (e.key === "ArrowLeft") { e.preventDefault(); goPresent(-1); }
-      if (e.key === "Escape") { setPresentOn(false); document.body.dataset.spot = ""; }
+      if (e.key === " ") { e.preventDefault(); setPresentPlaying((p) => !p); }
+      if (e.key === "Escape") { setPresentOn(false); setPresentPlaying(false); document.body.dataset.spot = ""; }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [presentOn, presentPack, presentStep]);
+
+  useEffect(() => {
+    if (!presentOn || !presentPlaying || !presentPack) return undefined;
+    const ms = presentPack.autoplay_ms || 8000;
+    const t = setInterval(() => {
+      setPresentStep((s) => {
+        const n = (presentPack.beats || []).length;
+        if (s >= n - 1) {
+          setPresentPlaying(false);
+          return s;
+        }
+        applyBeat(presentPack, s + 1);
+        return s + 1;
+      });
+    }, ms);
+    return () => clearInterval(t);
+  }, [presentOn, presentPlaying, presentPack]);
 
   async function liveWhatIf(vals) {
     setWhatIfBusy(true);
@@ -459,6 +483,12 @@ export default function App() {
           ? "Vadovo eilė"
           : view === "gallery"
             ? "Istorinė galerija"
+          : view === "customer"
+            ? "Klientų maketas"
+          : view === "split"
+            ? "Klientas ir stalas"
+          : view === "integrations"
+            ? "Integracijos"
             : <>Paraiškos <span>/</span> {current?.title || (scenarioId === "intake" ? "Nauja paraiška" : scenarioId === "queue" ? (run?.title || "Eilės byla") : "Naujas vartotojas, TP 12-608")}</>;
 
   return (
@@ -515,6 +545,15 @@ export default function App() {
                 <button className={`item${view === "rules" ? " on" : ""}`} type="button" onClick={() => { setView("rules"); setSelected("parse_request"); setInspectorOpen(true); }}>
                   <b>Taisyklės</b><small>Mazgai ir ESO šaltiniai</small>
                 </button>
+                <button className={`item${view === "integrations" ? " on" : ""}`} type="button" onClick={() => { setView("integrations"); setSelected("gis"); setInspectorOpen(true); }}>
+                  <b>Integracijos</b><small>Adapteriai mock / stub</small>
+                </button>
+                <button className={`item${view === "customer" ? " on" : ""}`} type="button" onClick={() => setView("customer")}>
+                  <b>Klientų maketas</b><small>Paraiška ir būsena</small>
+                </button>
+                <a className="item" href="/api/onepager.html" target="_blank" rel="noreferrer">
+                  <b>Vieno lapo santrauka</b><small>A4 palikti žiuriui</small>
+                </a>
               </>
             )}
           </div>
@@ -558,6 +597,24 @@ export default function App() {
           {view === "case" && <div className={`exec-hud ${hud.cls}`}>{hud.text}</div>}
           <div className="workspace">
             <div className="wf-wrap" data-spot-target="canvas">
+              {view === "split" && (
+                <div className="split-view" data-spot-target="split">
+                  <CustomerPortal compact />
+                  <QueueDesk
+                    queue={queue}
+                    batching={batching}
+                    busy={inboxBusy}
+                    onBatch={batchAll}
+                    onReset={resetQueue}
+                    onOpen={openCase}
+                    onApprove={inboxApprove}
+                    onOverride={inboxOverride}
+                    onEdit={inboxEdit}
+                    lang={lang}
+                  />
+                </div>
+              )}
+              {view === "customer" && <CustomerPortal />}
               {view === "queue" && (
                 <QueueDesk
                   queue={queue}
@@ -593,6 +650,15 @@ export default function App() {
                   followId={runningTool}
                 />
               )}
+              {view === "integrations" && (
+                <WorkflowCanvas
+                  mode="adapters"
+                  selectedId={selected}
+                  onSelect={pickNode}
+                  inspectorOpen={inspectorOpen}
+                  architecture={architecture}
+                />
+              )}
               {view === "how" && (
                 <WorkflowCanvas
                   mode="arch"
@@ -612,7 +678,7 @@ export default function App() {
                 />
               )}
             </div>
-            {view !== "queue" && view !== "gallery" && (inspectorOpen ? (
+            {view !== "queue" && view !== "gallery" && view !== "customer" && view !== "split" && (inspectorOpen ? (
               <div className="inspector">
                 {view === "case" && (
                   <StepSheet
@@ -660,6 +726,20 @@ export default function App() {
                     </header>
                     <div className="sheet-body">
                       <HowItWorks architecture={architecture} layerId={selected} />
+                    </div>
+                  </section>
+                )}
+                {view === "integrations" && (
+                  <section className="sheet">
+                    <header className="sheet-head">
+                      <div>
+                        <div className="sheet-kicker">{selected}</div>
+                        <h2>{(adapters.find((a) => a.id === selected) || {}).title || selected}</h2>
+                      </div>
+                      <button type="button" className="insp-x" onClick={() => setInspectorOpen(false)} aria-label="Uždaryti">×</button>
+                    </header>
+                    <div className="sheet-body">
+                      <AdapterSheet adapter={adapters.find((a) => a.id === selected) || (architecture?.adapters || []).find((a) => a.id === selected)} />
                     </div>
                   </section>
                 )}
@@ -734,10 +814,12 @@ export default function App() {
           pack={presentPack}
           step={presentStep}
           lang={lang}
+          playing={presentPlaying}
           onPrev={() => goPresent(-1)}
           onNext={() => goPresent(1)}
-          onClose={() => { setPresentOn(false); document.body.dataset.spot = ""; }}
+          onClose={() => { setPresentOn(false); setPresentPlaying(false); document.body.dataset.spot = ""; }}
           onLang={() => setLang((l) => (l === "lt" ? "en" : "lt"))}
+          onToggle={() => setPresentPlaying((p) => !p)}
         />
       )}
     </div>

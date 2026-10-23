@@ -1,12 +1,13 @@
 # Demo script — 4–5 minutes
 
-Stage: `make demo`. Open http://127.0.0.1:8000. Click **Pristatymas**. Toggle **EN** if the jury is English-speaking. Arrow keys move beats. The TS document stays Lithuanian.
+Stage: `make demo`. Open http://127.0.0.1:8000. Click **Pristatymas**. Autoplay starts (8 s / beat). **Pauzė** / space to pause. Toggle **EN** if needed. Arrow keys still work. The TS document stays Lithuanian.
 
-The path is a **frozen replay** — no live batch wait, no tile server.
+The path is a **frozen replay**. Leave-behind: `/api/onepager.html`.
 
 | Time | Beat | Key |
 |---|---|---|
-| 0:00 | Desk HUD | Twelve redacted 12-608 cases. SLA three working days. |
+| 0:00 | Split | Customer mock on the left, desk on the right. Minutes, not days. |
+| 0:20 | Desk HUD | Twelve redacted 12-608 cases. SLA three working days. |
 | 0:25 | Paleisti visas | Frozen statuses flip. Python decides. |
 | 0:50 | Inbox | Approve / edit §3 / override. Waiting-for-data cards sit here too. |
 | 1:15 | Hero map | 11 kW, pole 200/3. Paper map if tiles fail. |

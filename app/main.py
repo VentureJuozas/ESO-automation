@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -160,6 +160,85 @@ def present_pack():
     from eso_agent.present import frozen_pack
 
     return frozen_pack()
+
+
+@app.get("/api/adapters")
+def adapters_get():
+    from eso_agent.adapters import adapter_catalog, adapter_mode
+
+    return {"mode": adapter_mode(), "adapters": adapter_catalog()}
+
+
+@app.get("/api/onepager.html")
+def onepager_html():
+    from eso_agent.onepager import render_onepager_html
+
+    return HTMLResponse(render_onepager_html())
+
+
+class PortalSubmit(BaseModel):
+    kw: float = 11
+    phases: int = 3
+    lat: float | None = None
+    lon: float | None = None
+    object_name: str = "Naujas buitinis objektas"
+    address: str = ""
+
+
+class PortalAnswer(BaseModel):
+    lat: float | None = None
+    lon: float | None = None
+    kw: float | None = None
+    phases: int | None = None
+    text: str = ""
+
+
+@app.post("/api/portal/applications")
+def portal_submit(body: PortalSubmit):
+    from eso_agent.portal import submit
+
+    return submit(body.model_dump())
+
+
+@app.get("/api/portal/applications/{aid}")
+def portal_get(aid: str):
+    from eso_agent.portal import get_app
+
+    try:
+        return get_app(aid)
+    except KeyError as exc:
+        raise HTTPException(404) from exc
+
+
+@app.post("/api/portal/applications/{aid}/answer")
+def portal_answer(aid: str, body: PortalAnswer):
+    from eso_agent.portal import answer
+
+    try:
+        return answer(aid, body.model_dump(exclude_none=True))
+    except KeyError as exc:
+        raise HTTPException(404) from exc
+
+
+@app.get("/api/portal/applications/{aid}/ts.html")
+def portal_ts(aid: str):
+    from eso_agent.portal import ts_html
+
+    try:
+        return HTMLResponse(ts_html(aid))
+    except KeyError as exc:
+        raise HTTPException(404) from exc
+
+
+@app.get("/api/portal/applications/{aid}/ts.pdf")
+def portal_pdf(aid: str):
+    from eso_agent.portal import ts_pdf
+
+    try:
+        data = ts_pdf(aid)
+    except KeyError as exc:
+        raise HTTPException(404) from exc
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{aid}.pdf"'})
 
 
 class WhatIfBody(BaseModel):

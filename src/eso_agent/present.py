@@ -5,6 +5,19 @@ from typing import Any
 
 BEATS: list[dict[str, Any]] = [
     {
+        "id": "split",
+        "view": "split",
+        "spot": "split",
+        "lt": {
+            "title": "Klientas ir stalas",
+            "say": "Kairėje — demonstracinis klientų maketas. Dešinėje — vadovo eilė. Paraiška įeina, TS išeina per minutes, ne dienas.",
+        },
+        "en": {
+            "title": "Customer and desk",
+            "say": "Left: a demo customer mock. Right: the manager desk. A request goes in, a TS comes out in minutes, not days.",
+        },
+    },
+    {
         "id": "desk",
         "view": "queue",
         "spot": "hud",
@@ -146,6 +159,19 @@ BEATS: list[dict[str, Any]] = [
         },
     },
     {
+        "id": "integrations",
+        "view": "integrations",
+        "spot": "canvas",
+        "lt": {
+            "title": "Integracijos",
+            "say": "Penki adapteriai: GIS, Power BI, CRM, kainos, TS registras. Šiandien mock. Stubai rodo kelią į ESO sistemas.",
+        },
+        "en": {
+            "title": "Integrations",
+            "say": "Five adapters: GIS, Power BI, CRM, pricing, TS registry. Today they are mocks. Stubs show the path to ESO systems.",
+        },
+    },
+    {
         "id": "time",
         "view": "case",
         "apply": "hero",
@@ -212,6 +238,7 @@ def frozen_pack() -> dict[str, Any]:
         "queue_before": before,
         "queue_after": after,
         "audit": {"sha256": audit.get("sha256"), "tool_count": len(audit.get("tools") or [])},
+        "autoplay_ms": 8000,
         "frozen": True,
         "note": "Užšaldytas replay. Jokio tinklo, jokio rakto.",
     }

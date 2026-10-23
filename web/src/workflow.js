@@ -65,6 +65,32 @@ export const ARCH_EDGES = [
   ["human", "ui"],
 ];
 
+export const ADAPTER_NODES = [
+  { id: "gis", label: "GIS", caption: "Topologija", x: X[0], y: 80, hue: "#3b82f6", icon: "pin" },
+  { id: "capacity", label: "Power BI", caption: "Pajėgumas", x: X[1], y: 80, hue: "#7c5cfc", icon: "grid" },
+  { id: "crm", label: "CRM", caption: "Portalas", x: X[2], y: 80, hue: "#ff6d5a", icon: "doc" },
+  { id: "pricing", label: "Kainos", caption: "Katalogas", x: X[3], y: 80, hue: "#d97706", icon: "send" },
+  { id: "registry", label: "TS registras", caption: "Dokumentai", x: X[1], y: 280, hue: "#0f766e", icon: "doc" },
+];
+
+export const ADAPTER_EDGES = [
+  ["gis", "capacity"],
+  ["crm", "gis"],
+  ["capacity", "pricing"],
+  ["pricing", "registry"],
+  ["crm", "registry"],
+];
+
+export const ADAPTER_STICKIES = [
+  {
+    id: "ad-note",
+    x: 36,
+    y: 280,
+    title: "Integracijos",
+    body: "Mock = dabartiniai 12-608 duomenys. Stub = dokumentuotas kelias į tikrą ESO sistemą. Šiandien visos mock.",
+  },
+];
+
 export const ARCH_STICKIES = [
   {
     id: "arch-note",
