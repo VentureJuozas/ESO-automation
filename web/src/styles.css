@@ -672,6 +672,8 @@ table.cost tr.total td { font-size: 14px; }
 .present-bar h3 { margin: 2px 0 6px; font-size: 16px; }
 .present-bar p { margin: 0; font-size: 13px; color: #ddd; max-width: 70ch; }
 .present-nav { display: flex; gap: 6px; flex-shrink: 0; }
+.present-nav .go { background: #fff; color: #111; border-color: #ddd; }
+.present-nav .exec { color: #fff; }
 .whatif-bar {
   display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
   padding: 8px 12px; background: #f6f6f7; border-bottom: 1px solid var(--line); font-size: 12px;
