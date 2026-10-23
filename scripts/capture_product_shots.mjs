@@ -19,7 +19,7 @@ fs.mkdirSync(ART, { recursive: true });
 fs.mkdirSync(MEDIA, { recursive: true });
 
 async function snap(page, name) {
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(400);
   const art = path.join(ART, `${name}.png`);
   const media = path.join(MEDIA, `${name}.png`);
   await page.screenshot({ path: art, fullPage: false });
@@ -27,30 +27,44 @@ async function snap(page, name) {
   console.log("shot", name);
 }
 
+async function scrollPanel(page, y) {
+  await page.locator(".sheet-body").evaluate((el, top) => {
+    el.scrollTop = top;
+  }, y);
+  await page.waitForTimeout(200);
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: VIEW, deviceScaleFactor: 1 });
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
   await page.getByTestId("app-title").waitFor();
-  await snap(page, "01_full_flow");
+
+  await page.getByTestId("group-application").getByRole("button").first().click();
+  await page.getByTestId("group-issue").getByRole("button").first().click();
   await snap(page, "02_sidebar_dropdowns");
+  await page.getByTestId("group-application").getByRole("button").first().click();
+  await page.getByTestId("group-issue").getByRole("button").first().click();
 
   await page.getByTestId("run-flow").click();
   await page.getByTestId("approval-dock").waitFor({ timeout: 40000 });
+  await snap(page, "01_full_flow");
+  await snap(page, "06_approval");
 
   await page.getByTestId("step-check_capacity").click();
   await page.getByTestId("load-loss").waitFor();
+  await scrollPanel(page, 220);
   await snap(page, "03_capacity_load_loss");
 
   await page.getByTestId("step-check_voltage_drop").click();
   await page.getByTestId("load-loss").waitFor();
+  await scrollPanel(page, 180);
   await snap(page, "04_voltage");
 
   await page.getByTestId("step-select_solution").click();
   await page.getByTestId("load-loss").waitFor();
+  await page.getByTestId("load-loss").scrollIntoViewIfNeeded();
   await snap(page, "05_solution");
-
-  await snap(page, "06_approval");
 
   await page.getByTestId("nav-trace").click();
   await page.getByTestId("trace-panel").waitFor();
@@ -60,12 +74,12 @@ async function main() {
   await page.getByTestId("open-ts").waitFor({ timeout: 20000 });
   const href = await page.getByTestId("open-ts").getAttribute("href");
   await page.goto(BASE + href, { waitUntil: "networkidle" });
+  await page.locator('[data-page="1"]').waitFor();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await snap(page, "08_ts_page_1");
   const page2 = page.locator('[data-page="2"]');
-  if (await page2.count()) {
-    await page2.scrollIntoViewIfNeeded();
-    await snap(page, "09_ts_page_2");
-  }
+  await page2.scrollIntoViewIfNeeded();
+  await snap(page, "09_ts_page_2");
   await browser.close();
 }
 
