@@ -9,6 +9,7 @@ import {
   INSPECTOR_PAD,
   NODE_H,
   NODE_W,
+  ANALYSIS_CHILDREN,
   PIPELINE_EDGES,
   PIPELINE_NODES,
   SOLUTION_OPTIONS,
@@ -22,6 +23,14 @@ import { Bang, Check, Icon } from "../icons.jsx";
 import { classify } from "../trace.js";
 
 function nodeState(id, events, runningTool, failed, skipped = []) {
+  if (id === "analysis") {
+    const states = ANALYSIS_CHILDREN.map((child) => nodeState(child.id, events, runningTool, failed, skipped));
+    if (states.includes("run")) return "run";
+    if (states.includes("stop")) return "stop";
+    if (states.some((state) => state === "done") && states.every((state) => state === "done" || state === "skip")) return "done";
+    if (states.some((state) => state === "done")) return "run";
+    return "wait";
+  }
   if (skipped.includes(id)) return "skip";
   if (runningTool === id) return "run";
   const ev = [...events].reverse().find((e) => e.tool === id);
@@ -130,6 +139,88 @@ function SolutionNode({ n, st, selected, onSelect, ports, nk }) {
   );
 }
 
+function AnalysisNode({ n, st, selectedId, onSelect, ports, nk, events, runningTool, failed, skipped }) {
+  const childIds = ANALYSIS_CHILDREN.map((child) => child.id);
+  const active = childIds.includes(selectedId);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  useEffect(() => {
+    if (childIds.includes(runningTool)) setOpen(true);
+  }, [runningTool]);
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDocClick(event) {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    const timer = window.setTimeout(() => document.addEventListener("click", onDocClick), 0);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={rootRef}
+      data-node={n.id}
+      data-testid="analysis-node"
+      className={`n8n-node solution-node analysis-node ${st}${active ? " on" : ""}${open ? " open" : ""}${nk ? ` k-${nk}` : ""}`}
+      style={{ left: n.x, top: n.y, "--hue": n.hue }}
+    >
+      {[...ports].map((side) => (
+        <span key={side} className={`n8n-port port-${side}${st === "run" ? " live" : ""}`} />
+      ))}
+      <button
+        type="button"
+        className="solution-trigger"
+        data-testid="analysis-menu-button"
+        aria-pressed={active}
+        aria-expanded={open}
+        aria-label={n.label}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((value) => !value);
+        }}
+      >
+        <span className="n8n-ico"><Icon name={n.icon} size={20} /></span>
+        <span className="n8n-copy"><b>{n.label}</b></span>
+        <i className="chev" aria-hidden="true" />
+      </button>
+      {open && (
+        <ul className="solution-menu analysis-menu" role="listbox" aria-label="Analysis" data-testid="analysis-menu">
+          {ANALYSIS_CHILDREN.map((child) => {
+            const childState = nodeState(child.id, events, runningTool, failed, skipped);
+            return (
+              <li key={child.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selectedId === child.id}
+                  data-testid={`analysis-${child.id}`}
+                  className={`st-${childState}`}
+                  onClick={() => onSelect(child.id)}
+                >
+                  <i className={`nav-dot st-${childState}`} />
+                  {child.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {st === "done" && <span className="n8n-pip done"><Check /></span>}
+      {st === "stop" && <span className="n8n-pip stop"><Bang /></span>}
+      {st === "skip" && <span className="n8n-pip skip" title="Skipped">–</span>}
+      {st === "run" && <span className="n8n-pip run" />}
+    </div>
+  );
+}
+
 function lastEvent(id, events) {
   return (
     [...events].reverse().find((e) => e.tool === id && e.type === "tool")
@@ -221,7 +312,7 @@ export default function WorkflowCanvas({
 
   useEffect(() => {
     const id = followId || runningTool || selectedId;
-    const node = lookup(id);
+    const node = lookup(id) || (ANALYSIS_CHILDREN.some((child) => child.id === id) ? lookup("analysis") : null);
     if (node && (followId || runningTool || obscured(node))) panTo(node);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [followId, runningTool, selectedId, inspectorOpen]);
@@ -334,16 +425,16 @@ export default function WorkflowCanvas({
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f9d61" />
             </marker>
             <marker id="arrow-run" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff6d5a" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#20366c" />
             </marker>
             <marker id="arrow-llm" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#d97706" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#7a9620" />
             </marker>
             <marker id="arrow-tool" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f766e" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6d8a22" />
             </marker>
             <marker id="arrow-human" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff6d5a" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#20366c" />
             </marker>
           </defs>
           {edges.map(([a, b]) => {
@@ -391,6 +482,23 @@ export default function WorkflowCanvas({
                 onSelect={onSelect}
                 ports={ports}
                 nk={nk}
+              />
+            );
+          }
+          if (mode === "pipeline" && n.id === "analysis") {
+            return (
+              <AnalysisNode
+                key={n.id}
+                n={n}
+                st={st}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                ports={ports}
+                nk={nk}
+                events={events}
+                runningTool={runningTool}
+                failed={failed}
+                skipped={skipped}
               />
             );
           }

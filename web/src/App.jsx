@@ -3,6 +3,9 @@ import { connectEvents, getJSON, postJSON } from "./api.js";
 import WorkflowCanvas from "./components/WorkflowCanvas.jsx";
 import StepSheet from "./components/StepSheet.jsx";
 import Sidebar from "./components/Sidebar.jsx";
+import ChangeRequest from "./components/ChangeRequest.jsx";
+import TestEnvironment from "./components/TestEnvironment.jsx";
+import PowerRequest from "./components/PowerRequest.jsx";
 import TracePanel from "./components/TracePanel.jsx";
 import { buildTrace } from "./trace.js";
 import { GROUPS } from "./steps.js";
@@ -16,6 +19,50 @@ const HERO = {
   text: "New household customer, 11 kW, three phases, coordinates 54.55929, 25.27955, TP 12-608.",
 };
 
+const HERO_SUMMARY = {
+  power: "11 kW, 3-phase",
+  coords: "54.55929, 25.27955",
+  network: "TP 12-608, feeder L-200, pole 200/3",
+  solution: "New pole-mounted cabinet, 16 mm² service, 20 A breaker",
+};
+
+function eventOutput(events, tool) {
+  const hit = [...events].reverse().find((event) => event.tool === tool && event.outputs);
+  return hit?.outputs || null;
+}
+
+function coordText(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  return String(Math.round(number * 1e5) / 1e5);
+}
+
+function requestSummary(power, events) {
+  if (!power) return HERO_SUMMARY;
+  const location = eventOutput(events, "locate_connection_point");
+  const solution = eventOutput(events, "select_solution");
+  const breaker = eventOutput(events, "size_breaker");
+  let network = "TP 12-608";
+  if (location?.feeder) {
+    const kind = location.element_kind === "cabinet" ? "cabinet" : "pole";
+    network = `TP 12-608, feeder ${location.feeder}, ${kind} ${location.element_id}`;
+  }
+  let proposed = "Pending";
+  if (solution?.id) {
+    const amps = breaker?.amps != null ? `${breaker.amps} A breaker` : "";
+    const cable = solution.cable_mm2 ? `${solution.cable_mm2} mm² service` : "";
+    if (solution.id === "A") proposed = amps ? `Breaker in the existing cabinet, ${amps}` : "Breaker in the existing cabinet";
+    else if (solution.id === "C") proposed = ["Cable cut-in", cable, amps].filter(Boolean).join(", ");
+    else proposed = ["New pole-mounted cabinet", cable, amps].filter(Boolean).join(", ");
+  }
+  return {
+    power: `${power.kw} kW, ${power.phases === 1 ? "1-phase" : "3-phase"}`,
+    coords: `${coordText(power.lat)}, ${coordText(power.lon)}`,
+    network,
+    solution: proposed,
+  };
+}
+
 export default function App() {
   const [architecture, setArchitecture] = useState(null);
   const [run, setRun] = useState(null);
@@ -26,6 +73,9 @@ export default function App() {
   const [error, setError] = useState("");
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [kindOverlay, setKindOverlay] = useState(false);
+  const [mode, setMode] = useState("flow");
+  const [powerDraft, setPowerDraft] = useState(null);
+  const [caseRequest, setCaseRequest] = useState(null);
   const [groupsOpen, setGroupsOpen] = useState({
     application: true,
     connection: true,
@@ -59,6 +109,7 @@ export default function App() {
   }, [snap?.draft, snap?.issued]);
 
   function pickNode(id) {
+    setMode("flow");
     setSelected(id);
     setInspectorOpen(true);
     const group = GROUPS.find((g) => g.tools.includes(id));
@@ -109,16 +160,18 @@ export default function App() {
     stopRef.current = close;
   }
 
-  async function start() {
+  async function launch(body, custom) {
     setError("");
     setEvents([]);
     setSection3("");
     setRunningTool("parse_request");
     setSelected("parse_request");
     setInspectorOpen(true);
+    setMode("flow");
     stopRef.current();
     try {
-      const created = await postJSON("/api/runs", { scenario_id: "hero", text: HERO.text, form: HERO });
+      const created = await postJSON("/api/runs", body);
+      setCaseRequest(custom);
       setRun(created);
       listen(created);
       getJSON(`/api/runs/${created.id}`).then((r) => {
@@ -130,7 +183,44 @@ export default function App() {
     } catch (e) {
       setError(String(e));
       setRunningTool(null);
+      throw e;
     }
+  }
+
+  function requestBody(power) {
+    const text = `New household customer, ${power.kw} kW, ${power.phases === 1 ? "one phase" : "three phases"}, coordinates ${power.lat}, ${power.lon}.`;
+    return {
+      scenario_id: "intake",
+      text,
+      form: {
+        kw: power.kw,
+        phases: power.phases,
+        lat: power.lat,
+        lon: power.lon,
+        object_name: power.objectName,
+        customer_type: "household",
+        text,
+      },
+    };
+  }
+
+  function start() {
+    if (caseRequest) return launch(requestBody(caseRequest), caseRequest);
+    return launch({ scenario_id: "hero", text: HERO.text, form: HERO }, null);
+  }
+
+  function loadPower(power) {
+    stopRef.current();
+    setError("");
+    setEvents([]);
+    setSection3("");
+    setRunningTool(null);
+    setRun(null);
+    setSelected("parse_request");
+    setInspectorOpen(false);
+    setKindOverlay(false);
+    setCaseRequest(power);
+    setMode("flow");
   }
 
   async function approve() {
@@ -151,6 +241,7 @@ export default function App() {
     setEvents(snap2.events || events);
   }
 
+  const summary = requestSummary(caseRequest, events);
   const issuedDoc = snap?.issued?.document || snap?.draft?.document;
   const waiting = status === "awaiting_approval";
   const hud = status === "running" || runningTool
@@ -159,7 +250,11 @@ export default function App() {
       ? { cls: "wait", text: "Awaiting engineer" }
       : status === "issued"
         ? { cls: "ok", text: snap?.issued?.ts_number || "Issued" }
-        : { cls: "", text: "11 kW · 3F · L-200 · pole 200/3" };
+        : status === "escalated"
+          ? { cls: "wait", text: "Needs an engineer" }
+          : !run && caseRequest
+            ? { cls: "", text: `${caseRequest.kw} kW · ${caseRequest.phases}F · press Start` }
+            : { cls: "", text: caseRequest ? `${caseRequest.kw} kW · ${caseRequest.phases}F` : "11 kW · 3F · L-200 · pole 200/3" };
 
   return (
     <div className="app">
@@ -171,10 +266,22 @@ export default function App() {
         open={groupsOpen}
         onToggle={(id) => setGroupsOpen((o) => ({ ...o, [id]: !o[id] }))}
         status={status}
+        mode={mode}
+        onShowFlow={() => setMode("flow")}
+        onShowRequest={() => setMode("request")}
+        onShowPower={() => setMode("power")}
+        onShowTest={() => setMode("test")}
+        onApplyCase={(item) => {
+          setPowerDraft({ ...item, stamp: Date.now() });
+          setMode("power");
+        }}
       />
       <section className="main">
         <header className="top">
-          <div className="crumb" data-testid="app-title">ESO helper</div>
+          <div className="crumb" data-testid="app-title">
+            <img src="/eso-logo.png" alt="" />
+            ESO helper
+          </div>
           <div className="top-actions">
             {status === "issued" && run?.id && (
               <a className="go" data-testid="open-ts" href={`/api/runs/${run.id}/ts.html`} target="_blank" rel="noreferrer">
@@ -199,16 +306,24 @@ export default function App() {
               onClick={start}
               disabled={status === "running" || Boolean(runningTool)}
             >
-              Run
+              Start
             </button>
           </div>
         </header>
 
+        {mode === "request" ? (
+          <ChangeRequest />
+        ) : mode === "test" ? (
+          <TestEnvironment />
+        ) : mode === "power" ? (
+          <PowerRequest busy={status === "running" || Boolean(runningTool)} draft={powerDraft} onSubmit={loadPower} />
+        ) : (
+        <>
         <div className="request-bar" data-testid="request-bar">
-          <div><b>Requested power</b><span>11 kW, 3-phase</span></div>
-          <div><b>Coordinates</b><span>54.55929, 25.27955</span></div>
-          <div><b>Network</b><span>TP 12-608, feeder L-200, pole 200/3</span></div>
-          <div><b>Proposed solution</b><span>New pole-mounted cabinet, 16 mm² service, 20 A breaker</span></div>
+          <div><b>Requested power</b><span>{summary.power}</span></div>
+          <div><b>Coordinates</b><span>{summary.coords}</span></div>
+          <div><b>Network</b><span>{summary.network}</span></div>
+          <div><b>Proposed solution</b><span>{summary.solution}</span></div>
         </div>
 
         <div className="canvas" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -272,6 +387,8 @@ export default function App() {
             </div>
           )}
         </div>
+        </>
+        )}
       </section>
     </div>
   );

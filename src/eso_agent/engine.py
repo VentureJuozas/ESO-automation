@@ -79,7 +79,7 @@ def hydrate_runs() -> None:
 
 
 def _delay() -> float:
-    return float(os.environ.get("ESO_STEP_DELAY", "0.11"))
+    return float(os.environ.get("ESO_STEP_DELAY", "0.85"))
 
 
 def _value(events: list[dict[str, Any]], started: float, status: str) -> dict[str, Any]:

@@ -1,9 +1,9 @@
 export const GROUPS = [
-  { id: "application", title: "Application", hue: "#ff6d5a", icon: "doc", tools: ["parse_request"] },
-  { id: "connection", title: "Connection point", hue: "#3b82f6", icon: "pin", tools: ["locate_connection_point", "render_map"] },
-  { id: "checks", title: "Checks", hue: "#7c5cfc", icon: "grid", tools: ["check_capacity", "check_voltage_drop", "check_reliability", "check_future"] },
-  { id: "solution", title: "Solution", hue: "#d97706", icon: "branch", tools: ["select_solution", "size_breaker", "estimate_cost"] },
-  { id: "issue", title: "Issue", hue: "#0f766e", icon: "send", tools: ["draft_ts_section3", "engineer_approval", "issue_ts"] },
+  { id: "application", title: "Application", hue: "#20366c", icon: "doc", tools: ["parse_request"] },
+  { id: "connection", title: "Connection point", hue: "#4d6a9a", icon: "pin", tools: ["locate_connection_point", "render_map"] },
+  { id: "checks", title: "Analysis", hue: "#35548a", icon: "grid", tools: ["check_capacity", "check_voltage_drop", "check_reliability", "check_future"] },
+  { id: "solution", title: "Solution", hue: "#7a9620", icon: "branch", tools: ["select_solution", "size_breaker", "estimate_cost"] },
+  { id: "issue", title: "Issue", hue: "#6d8a22", icon: "send", tools: ["draft_ts_section3", "engineer_approval", "issue_ts"] },
 ];
 
 export const STEP_LABEL = {

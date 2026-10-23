@@ -1,8 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GROUPS, STEP_LABEL } from "../steps.js";
 import { Icon } from "../icons.jsx";
 
-const STORE = "eso-suggestions";
+const TEST_CASES = [
+  {
+    id: "overload",
+    title: "100 kW overload",
+    note: "Fails the capacity check",
+    objectName: "Large load",
+    kw: "100",
+    phases: "3",
+    lat: "54.55929",
+    lon: "25.27955",
+  },
+  {
+    id: "household",
+    title: "11 kW household",
+    note: "Passes the load checks",
+    objectName: "Household connection",
+    kw: "11",
+    phases: "3",
+    lat: "54.55929",
+    lon: "25.27955",
+  },
+];
 
 function stepState(id, events, runningTool, status) {
   if (runningTool === id) return "run";
@@ -15,21 +36,6 @@ function stepState(id, events, runningTool, status) {
   return "done";
 }
 
-function loadSuggestions() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORE) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function formatWhen(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-}
-
 export default function Sidebar({
   events = [],
   runningTool,
@@ -38,53 +44,26 @@ export default function Sidebar({
   open,
   onToggle,
   status,
+  mode = "flow",
+  onShowFlow,
+  onShowRequest,
+  onShowPower,
+  onShowTest,
+  onApplyCase,
 }) {
   const [flowOpen, setFlowOpen] = useState(false);
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState(loadSuggestions);
-  const [expanded, setExpanded] = useState(() => new Set());
-  const [functionality, setFunctionality] = useState("");
-  const [detail, setDetail] = useState("");
-  const [engineer, setEngineer] = useState("");
+  const [casesOpen, setCasesOpen] = useState(true);
+  const modeRef = useRef(mode);
 
   useEffect(() => {
-    localStorage.setItem(STORE, JSON.stringify(suggestions));
-  }, [suggestions]);
-
-  function submitSuggestion(event) {
-    event.preventDefault();
-    const title = functionality.trim();
-    const body = detail.trim();
-    if (!title || !body) return;
-    const item = {
-      id: `${Date.now()}`,
-      title,
-      detail: body,
-      engineer: engineer.trim(),
-      at: new Date().toISOString(),
-    };
-    setSuggestions((items) => [item, ...items]);
-    setExpanded((ids) => new Set(ids).add(item.id));
-    setFunctionality("");
-    setDetail("");
-    setEngineer("");
-  }
-
-  function toggleSuggestion(id) {
-    setExpanded((ids) => {
-      const next = new Set(ids);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  const canSubmit = functionality.trim() && detail.trim();
+    if (modeRef.current !== "flow" && mode === "flow") setFlowOpen(true);
+    modeRef.current = mode;
+  }, [mode]);
 
   return (
     <aside className="side" data-testid="sidebar">
       <div className="brand">
-        <span className="mark"><Icon name="branch" size={16} /></span>
+        <img className="brand-logo" src="/eso-logo.png" alt="ESO" />
         <div>
           <b>ESO helper</b>
           <small>0.4 kV · TP 12-608</small>
@@ -93,11 +72,14 @@ export default function Sidebar({
       <nav className="nav">
         <p className="nav-label">Main</p>
         <button
-          className={`nav-item${flowOpen ? " on" : ""}`}
+          className={`nav-item${mode === "flow" && flowOpen ? " on" : ""}`}
           type="button"
           data-testid="nav-flow"
           aria-expanded={flowOpen}
-          onClick={() => setFlowOpen((value) => !value)}
+          onClick={() => {
+            onShowFlow?.();
+            setFlowOpen((value) => (mode !== "flow" ? true : !value));
+          }}
         >
           <Icon name="branch" size={16} />
           Flow
@@ -125,7 +107,10 @@ export default function Sidebar({
                       className={`nav-step${selected === id ? " on" : ""}`}
                       type="button"
                       data-testid={`step-${id}`}
-                      onClick={() => onSelect(id)}
+                      onClick={() => {
+                        onShowFlow?.();
+                        onSelect(id);
+                      }}
                     >
                       <i className={`nav-dot st-${st}`} />
                       {STEP_LABEL[id] || id}
@@ -136,86 +121,65 @@ export default function Sidebar({
             ))}
           </div>
         )}
-        <button className="nav-item" type="button" disabled data-testid="nav-test-env">
+        <button
+          className={`nav-item${mode === "power" ? " on" : ""}`}
+          type="button"
+          data-testid="nav-power"
+          aria-pressed={mode === "power"}
+          onClick={() => onShowPower?.()}
+        >
+          <Icon name="doc" size={16} />
+          New request
+        </button>
+        <button
+          className={`nav-item${casesOpen ? " on" : ""}`}
+          type="button"
+          data-testid="nav-cases"
+          aria-expanded={casesOpen}
+          onClick={() => setCasesOpen((value) => !value)}
+        >
+          <Icon name="grid" size={16} />
+          Test cases
+          <i className={`nav-chev${casesOpen ? " open" : ""}`} aria-hidden="true" />
+        </button>
+        {casesOpen && (
+          <div className="flow-body" data-testid="test-cases">
+            {TEST_CASES.map((item) => (
+              <button
+                key={item.id}
+                className={`case-row${item.id === "overload" ? " fail" : ""}`}
+                type="button"
+                data-testid={`case-${item.id}`}
+                onClick={() => onApplyCase?.(item)}
+              >
+                <b>{item.title}</b>
+                <small>{item.note}</small>
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          className={`nav-item${mode === "test" ? " on" : ""}`}
+          type="button"
+          data-testid="nav-test-env"
+          aria-pressed={mode === "test"}
+          onClick={() => onShowTest?.()}
+        >
           <Icon name="flask" size={16} />
           Test environment
         </button>
 
         <p className="nav-label">Suggestions</p>
         <button
-          className={`nav-item${suggestOpen ? " on" : ""}`}
+          className={`nav-item${mode === "request" ? " on" : ""}`}
           type="button"
           data-testid="nav-propose"
-          aria-expanded={suggestOpen}
-          onClick={() => setSuggestOpen((value) => !value)}
+          aria-pressed={mode === "request"}
+          onClick={() => onShowRequest?.()}
         >
           <Icon name="plus" size={16} />
           Propose a change
-          <i className={`nav-chev${suggestOpen ? " open" : ""}`} aria-hidden="true" />
         </button>
-        {suggestOpen && (
-          <div className="suggest-panel" data-testid="suggest-panel">
-            <form onSubmit={submitSuggestion}>
-              <label htmlFor="suggest-who">Engineer</label>
-              <input
-                id="suggest-who"
-                value={engineer}
-                onChange={(event) => setEngineer(event.target.value)}
-                placeholder="Name"
-                autoComplete="name"
-              />
-              <label htmlFor="suggest-title">Functionality</label>
-              <input
-                id="suggest-title"
-                value={functionality}
-                onChange={(event) => setFunctionality(event.target.value)}
-                placeholder="What to add"
-                required
-              />
-              <label htmlFor="suggest-detail">What to implement</label>
-              <textarea
-                id="suggest-detail"
-                value={detail}
-                onChange={(event) => setDetail(event.target.value)}
-                placeholder="Describe the change for the manager"
-                required
-              />
-              <button className="suggest-submit" type="submit" disabled={!canSubmit}>
-                Submit suggestion
-              </button>
-            </form>
-            {suggestions.length === 0 ? (
-              <p className="suggest-empty">No suggestions yet.</p>
-            ) : (
-              <ul className="suggest-list">
-                {suggestions.map((item) => {
-                  const isOpen = expanded.has(item.id);
-                  return (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        className={`suggest-row${isOpen ? " open" : ""}`}
-                        aria-expanded={isOpen}
-                        onClick={() => toggleSuggestion(item.id)}
-                      >
-                        <i className={`nav-chev${isOpen ? " open" : ""}`} aria-hidden="true" />
-                        <b>{item.title}</b>
-                      </button>
-                      {isOpen && (
-                        <p className="suggest-detail">
-                          <small>
-                            {[item.engineer || "Engineer", formatWhen(item.at)].filter(Boolean).join(" · ")}
-                          </small>
-                          {item.detail}
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        )}
       </nav>
     </aside>
   );

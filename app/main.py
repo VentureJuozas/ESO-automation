@@ -375,6 +375,21 @@ def ts_pdf_run(rid: str):
     return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{rid}.pdf"'})
 
 
+@app.get("/api/runs/{rid}/ts.docx")
+def ts_docx_run(rid: str):
+    if rid not in RUNS:
+        raise HTTPException(404)
+    from eso_agent.document import document_from_snap
+    from eso_agent.ts_template import fill_ts_docx
+
+    data = fill_ts_docx(document_from_snap(snapshot(RUNS[rid])))
+    return Response(
+        data,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{rid}-prijungimo-salygos.docx"'},
+    )
+
+
 @app.get("/api/runs/{rid}/audit.json")
 def audit_json(rid: str):
     if rid not in RUNS:

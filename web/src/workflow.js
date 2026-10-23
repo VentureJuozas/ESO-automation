@@ -10,29 +10,25 @@ const X = [36, 300, 564, 828];
 const Y = [36, 196, 356, 516];
 
 export const PIPELINE_NODES = [
-  { id: "parse_request", label: "Read application", caption: "CRM", x: X[0], y: Y[0], hue: "#ff6d5a", icon: "doc" },
-  { id: "locate_connection_point", label: "Connection point", caption: "GIS", x: X[1], y: Y[0], hue: "#3b82f6", icon: "pin" },
-  { id: "select_solution", label: "Solution", caption: "Breaker installation / new cabinet", x: X[2], y: Y[0], hue: "#d97706", icon: "branch" },
-  { id: "size_breaker", label: "Breaker", caption: "§15", x: X[3], y: Y[0], hue: "#d97706", icon: "branch" },
-  { id: "check_capacity", label: "Capacity", caption: "SCADA", x: X[0], y: Y[1], hue: "#7c5cfc", icon: "grid" },
-  { id: "check_voltage_drop", label: "Voltage", caption: "50160", x: X[1], y: Y[1], hue: "#7c5cfc", icon: "grid" },
-  { id: "check_reliability", label: "Reliability", caption: "N-1", x: X[2], y: Y[1], hue: "#7c5cfc", icon: "grid" },
-  { id: "check_future", label: "Future load", caption: "Headroom", x: X[3], y: Y[1], hue: "#7c5cfc", icon: "grid" },
-  { id: "draft_ts_section3", label: "Draft §3", caption: "TS registry", x: X[0], y: Y[2], hue: "#0f766e", icon: "send" },
-  { id: "estimate_cost", label: "Cost", caption: "Catalogue", x: X[1], y: Y[2], hue: "#0f766e", icon: "send" },
-  { id: "render_map", label: "Map", caption: "GIS annex", x: X[2], y: Y[2], hue: "#0f766e", icon: "pin" },
-  { id: "engineer_approval", label: "Engineer", caption: "Gate", x: X[3], y: Y[2], hue: "#ff6d5a", icon: "send" },
-  { id: "issue_ts", label: "Issue TS", caption: "Document", x: X[3], y: Y[3], hue: "#0f766e", icon: "send" },
+  { id: "parse_request", label: "Read application", caption: "CRM", x: X[0], y: Y[0], hue: "#20366c", icon: "doc" },
+  { id: "locate_connection_point", label: "Connection point", caption: "GIS", x: X[1], y: Y[0], hue: "#4d6a9a", icon: "pin" },
+  { id: "select_solution", label: "Solution", caption: "Breaker installation / new cabinet", x: X[2], y: Y[0], hue: "#7a9620", icon: "branch" },
+  { id: "size_breaker", label: "Breaker", caption: "§15", x: X[3], y: Y[0], hue: "#7a9620", icon: "branch" },
+  { id: "analysis", label: "Analysis", caption: "", x: X[0], y: Y[1], hue: "#35548a", icon: "grid" },
+  { id: "check_future", label: "Future load", caption: "Headroom", x: X[1], y: Y[1], hue: "#35548a", icon: "grid" },
+  { id: "draft_ts_section3", label: "Draft §3", caption: "TS registry", x: X[0], y: Y[2], hue: "#6d8a22", icon: "send" },
+  { id: "estimate_cost", label: "Cost", caption: "Catalogue", x: X[1], y: Y[2], hue: "#6d8a22", icon: "send" },
+  { id: "render_map", label: "Map", caption: "GIS annex", x: X[2], y: Y[2], hue: "#6d8a22", icon: "pin" },
+  { id: "engineer_approval", label: "Engineer", caption: "Gate", x: X[3], y: Y[2], hue: "#20366c", icon: "send" },
+  { id: "issue_ts", label: "Issue TS", caption: "Document", x: X[3], y: Y[3], hue: "#6d8a22", icon: "send" },
 ];
 
 export const PIPELINE_EDGES = [
   ["parse_request", "locate_connection_point"],
   ["locate_connection_point", "select_solution"],
   ["select_solution", "size_breaker"],
-  ["size_breaker", "check_capacity"],
-  ["check_capacity", "check_voltage_drop"],
-  ["check_voltage_drop", "check_reliability"],
-  ["check_reliability", "check_future"],
+  ["size_breaker", "analysis"],
+  ["analysis", "check_future"],
   ["check_future", "draft_ts_section3"],
   ["draft_ts_section3", "estimate_cost"],
   ["estimate_cost", "render_map"],
@@ -41,12 +37,12 @@ export const PIPELINE_EDGES = [
 ];
 
 export const ARCH_NODES = [
-  { id: "ui", label: "Dashboard", caption: "Node graph", x: X[0], y: 80, hue: "#ff6d5a", icon: "grid" },
-  { id: "api", label: "FastAPI", caption: "REST + SSE", x: X[1], y: 80, hue: "#3b82f6", icon: "send" },
-  { id: "graph", label: "LangGraph", caption: "Orchestrator", x: X[2], y: 80, hue: "#7c5cfc", icon: "branch" },
-  { id: "tools", label: "Python tools", caption: "Decisions", x: X[3], y: 80, hue: "#0f766e", icon: "grid" },
-  { id: "llm", label: "LLM", caption: "Text only", x: X[2], y: 280, hue: "#d97706", icon: "doc" },
-  { id: "human", label: "Engineer", caption: "Approval", x: X[1], y: 280, hue: "#ff6d5a", icon: "send" },
+  { id: "ui", label: "Dashboard", caption: "Node graph", x: X[0], y: 80, hue: "#20366c", icon: "grid" },
+  { id: "api", label: "FastAPI", caption: "REST + SSE", x: X[1], y: 80, hue: "#4d6a9a", icon: "send" },
+  { id: "graph", label: "LangGraph", caption: "Orchestrator", x: X[2], y: 80, hue: "#35548a", icon: "branch" },
+  { id: "tools", label: "Python tools", caption: "Decisions", x: X[3], y: 80, hue: "#6d8a22", icon: "grid" },
+  { id: "llm", label: "LLM", caption: "Text only", x: X[2], y: 280, hue: "#7a9620", icon: "doc" },
+  { id: "human", label: "Engineer", caption: "Approval", x: X[1], y: 280, hue: "#20366c", icon: "send" },
   { id: "data", label: "Data", caption: "12-608 + rules", x: X[3], y: 280, hue: "#1c1c1f", icon: "pin" },
 ];
 
@@ -61,11 +57,11 @@ export const ARCH_EDGES = [
 ];
 
 export const ADAPTER_NODES = [
-  { id: "gis", label: "GIS", caption: "Topology", x: X[0], y: 80, hue: "#3b82f6", icon: "pin" },
-  { id: "capacity", label: "Power BI", caption: "Capacity", x: X[1], y: 80, hue: "#7c5cfc", icon: "grid" },
-  { id: "crm", label: "CRM", caption: "Application", x: X[2], y: 80, hue: "#ff6d5a", icon: "doc" },
-  { id: "pricing", label: "Pricing", caption: "Catalogue", x: X[3], y: 80, hue: "#d97706", icon: "send" },
-  { id: "registry", label: "TS registry", caption: "Documents", x: X[1], y: 280, hue: "#0f766e", icon: "doc" },
+  { id: "gis", label: "GIS", caption: "Topology", x: X[0], y: 80, hue: "#4d6a9a", icon: "pin" },
+  { id: "capacity", label: "Power BI", caption: "Capacity", x: X[1], y: 80, hue: "#35548a", icon: "grid" },
+  { id: "crm", label: "CRM", caption: "Application", x: X[2], y: 80, hue: "#20366c", icon: "doc" },
+  { id: "pricing", label: "Pricing", caption: "Catalogue", x: X[3], y: 80, hue: "#7a9620", icon: "send" },
+  { id: "registry", label: "TS registry", caption: "Documents", x: X[1], y: 280, hue: "#6d8a22", icon: "doc" },
 ];
 
 export const ADAPTER_EDGES = [
@@ -79,6 +75,12 @@ export const ADAPTER_EDGES = [
 export const ADAPTER_STICKIES = [];
 
 export const ARCH_STICKIES = [];
+
+export const ANALYSIS_CHILDREN = [
+  { id: "check_capacity", label: "Capacity" },
+  { id: "check_voltage_drop", label: "Voltage" },
+  { id: "check_reliability", label: "Reliability" },
+];
 
 export const SOLUTION_OPTIONS = [
   { id: "cabinet", label: "Breaker installation / new cabinet", active: true },

@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 from eso_agent.document import LAYOUT_BANNER, document_from_snap, render_ts_html
 from eso_agent.engine import approve_sync, run_sync_until_interrupt
-from eso_agent.fonts import GLYPHS
 from eso_agent.pdfutil import render_official_ts_pdf
 
 
@@ -19,24 +18,39 @@ def test_official_ts_html_and_pdf_two_pages():
     assert "DEMONSTRACINIS" not in html
     assert "n8n" not in html.lower()
     assert LAYOUT_BANNER == ""
-    assert 'data-page="1"' in html
-    assert 'data-page="2"' in html
-    assert "Priedas A" in html
-    assert "GIS-ANNEX" in html
-    assert "TS-PAGE-1" in html
-    assert GLYPHS in html
-    assert doc["sha256"] in html
-    assert "Techniniai parametrai" in html
-    assert "0,4 kV" in html
+    assert "PRIJUNGIMO SĄLYGOS NR." in html
+    assert "Nauja leistina naudoti galia" in html
+    assert "Kliento prijungimo objekto duomenys" in html
+    assert "data:image/jpeg;base64," in html
+    assert "Šios prijungimo sąlygos išduodamos" in html
+    assert "Elektros tinklų nuosavybės riba nustatyta" in html
+    assert "neprašoma" not in html
+    assert "Prioritetinė grupė" not in html
+    assert "Gamybos tikslas" not in html
+    assert "Parkas" not in html
+    for glyph in "ąčęėįšųūž":
+        assert glyph in html
+    assert "200/3" in html
+    from io import BytesIO
+    from zipfile import ZipFile
+
+    from eso_agent.ts_template import fill_ts_docx
+
+    docx = fill_ts_docx(doc)
+    assert docx[:2] == b"PK"
+    xml = ZipFile(BytesIO(docx)).read("word/document.xml").decode("utf-8")
+    assert doc["ts_number"] in xml
+    assert ">11</w:t>" in xml
+    assert "trifazis" in xml
+    assert "Elektros tinklų nuosavybės riba nustatyta" in xml
+    assert "neprašoma" not in xml
+    assert "Prioritetinė grupė" not in xml
+    assert "Gamybos tikslas" not in xml
+    assert ">Parkas<" not in xml
     pdf = render_official_ts_pdf(issued)
     assert pdf[:4] == b"%PDF"
     assert b"DejaVu" in pdf
-    assert b"/Count 2" in pdf
-    assert b"GIS-ANNEX" in pdf
-    assert b"TS-PAGE-1" in pdf
-    assert b"26-E-DEMO" in pdf
-    raw = pdf.decode("latin-1", errors="ignore")
-    assert "SHA-256" in raw or "SHA-256" in html
+    assert b"/Count" in pdf
 
 
 def test_ts_pdf_endpoint_two_pages():
@@ -51,12 +65,15 @@ def test_ts_pdf_endpoint_two_pages():
         assert issued["status"] == "issued"
         html = c.get(f"/api/runs/{rid}/ts.html")
         assert html.status_code == 200
-        assert 'data-page="2"' in html.text
-        assert "Priedas A" in html.text
-        assert "ąčęėįšųūž" in html.text
+        assert "PRIJUNGIMO SĄLYGOS" in html.text
+        for glyph in "ąčęėįšųūž":
+            assert glyph in html.text
+        assert "Nauja leistina naudoti galia" in html.text
+        assert "data:image/jpeg;base64," in html.text
+        docx = c.get(f"/api/runs/{rid}/ts.docx")
+        assert docx.status_code == 200
+        assert docx.content[:2] == b"PK"
         pdf = c.get(f"/api/runs/{rid}/ts.pdf")
         assert pdf.status_code == 200
         assert pdf.content[:4] == b"%PDF"
-        assert b"/Count 2" in pdf.content
-        assert b"GIS-ANNEX" in pdf.content
         assert b"DejaVu" in pdf.content

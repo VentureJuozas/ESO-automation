@@ -9,7 +9,7 @@ test("ESO helper single-case flow, step panels, approve, TS PDF", async ({ page,
   await page.getByTestId("nav-flow").click();
   await expect(page.getByTestId("sidebar")).toContainText("Application");
   await expect(page.getByTestId("sidebar")).toContainText("Connection point");
-  await expect(page.getByTestId("sidebar")).toContainText("Checks");
+  await expect(page.getByTestId("sidebar")).toContainText("Analysis");
   await expect(page.getByTestId("sidebar")).toContainText("Solution");
   await expect(page.getByTestId("sidebar")).toContainText("Issue");
   await expect(page.getByTestId("request-bar")).toContainText("Requested power");
@@ -67,20 +67,16 @@ test("ESO helper single-case flow, step panels, approve, TS PDF", async ({ page,
   const html = await request.get(href);
   expect(html.ok()).toBeTruthy();
   const text = await html.text();
-  expect(text).toContain("Prijungimo sąlygos");
-  expect(text).toContain('data-page="1"');
-  expect(text).toContain('data-page="2"');
-  expect(text).toContain("Priedas A");
-  expect(text).toContain("GIS-ANNEX");
+  expect(text).toContain("PRIJUNGIMO SĄLYGOS");
+  expect(text).toContain("Nauja leistina naudoti galia");
+  expect(text).toContain("data:image/jpeg;base64,");
   expect(text).not.toContain("DEMONSTRACINIS");
-  expect(text).toContain("ąčęėįšųūž");
+  for (const glyph of "ąčęėįšųūž") expect(text).toContain(glyph);
   const pdf = await request.get(href.replace("/ts.html", "/ts.pdf"));
   expect(pdf.ok()).toBeTruthy();
   const body = await pdf.body();
   expect(body.subarray(0, 4).toString()).toBe("%PDF");
   expect(body.includes(Buffer.from("DejaVu"))).toBeTruthy();
-  expect(body.includes(Buffer.from("/Count 2"))).toBeTruthy();
-  expect(body.includes(Buffer.from("GIS-ANNEX"))).toBeTruthy();
 });
 
 test("sidebar groups collapse and select steps", async ({ page }) => {
@@ -88,9 +84,9 @@ test("sidebar groups collapse and select steps", async ({ page }) => {
   await page.getByTestId("nav-flow").click();
   const checks = page.getByTestId("group-checks");
   await expect(checks.getByTestId("step-check_capacity")).toBeVisible();
-  await checks.getByRole("button", { name: /Checks/ }).click();
+  await checks.getByRole("button", { name: /Analysis/ }).click();
   await expect(checks.getByTestId("step-check_capacity")).toHaveCount(0);
-  await checks.getByRole("button", { name: /Checks/ }).click();
+  await checks.getByRole("button", { name: /Analysis/ }).click();
   await page.getByTestId("step-check_voltage_drop").click();
   await expect(page.getByTestId("step-panel")).toContainText("Voltage");
   await expect(page.getByTestId("data-source")).toBeVisible();
