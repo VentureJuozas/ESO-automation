@@ -29,6 +29,10 @@ test("ESO helper single-case flow, step panels, approve, TS PDF", async ({ page,
   await expect(page.getByTestId("calculation")).toBeVisible();
   await expect(page.getByTestId("load-loss")).toBeVisible();
   await expect(page.getByTestId("load-loss")).toContainText("Feeder current");
+  await expect(page.getByTestId("load-loss")).toContainText("P_feeder");
+  await expect(page.getByTestId("line-loading")).toContainText("Pass");
+  await expect(page.getByTestId("load-loss")).not.toContainText("160.9");
+  await expect(page.getByTestId("load-loss")).not.toContainText("85.4");
   await expect(page.getByTestId("loss-segments")).toBeVisible();
   await expect(page.getByTestId("result-block")).toContainText("Pass");
 
@@ -36,6 +40,8 @@ test("ESO helper single-case flow, step panels, approve, TS PDF", async ({ page,
   await expect(page.getByTestId("data-source")).toContainText("line-load");
   await expect(page.getByTestId("requirements")).toContainText("207 V");
   await expect(page.getByTestId("load-loss")).toBeVisible();
+  await expect(page.getByTestId("step-panel")).toContainText("224.0 V");
+  await expect(page.getByTestId("line-loading")).toContainText("Pass");
   await expect(page.getByTestId("step-result")).toHaveText("Pass");
 
   await page.getByTestId("step-select_solution").click();

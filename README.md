@@ -15,7 +15,7 @@ Deterministic Python decides. The LLM only reads the request and may phrase §3.
 3. Engineer approval and audit
 4. Two-page Lithuanian TS + GIS annex
 
-Each step panel shows **data source**, **requirements and rules**, **calculation**, and **result**. Capacity and voltage include a load and loss estimator (`src/line_load.py`): line loading before/after, voltage drop to the customer, feeder and transformer losses (kW and kWh/year).
+Each step panel shows **data source**, **requirements and rules**, **calculation**, and **result**. Capacity and voltage include a load and loss estimator: L-200 meter peak current `I = P / 0.624`, `3 × I² × R` on the TP → customer span, transformer `P0 + Pk·(S/Sn)²`, and annual energy with a loss factor. Line loading above 100 % of ampacity fails the flow.
 
 ## Quickstart
 

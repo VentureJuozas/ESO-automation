@@ -18,7 +18,10 @@ export default function LoadLoss({ loss, compact = false }) {
   const line = loss.line || {};
   const feed = loss.feeder_loss || {};
   const tr = loss.transformer_loss || {};
-  const path = compact ? (loss.to_customer || []) : (loss.segments || []);
+  const loading = loss.line_loading || {};
+  const path = loss.to_customer || [];
+  const loadPct = loading.max_after_pct ?? line.after?.load_pct;
+  const lineOk = loading.pass !== false && (loadPct || 0) <= 100;
   return (
     <div className={`load-loss${compact ? " compact" : ""}`} data-testid="load-loss">
       <h3>{compact ? "Load and loss" : "Load and loss estimator"}</h3>
@@ -26,16 +29,17 @@ export default function LoadLoss({ loss, compact = false }) {
         <article>
           <b>Feeder current</b>
           <span>{fmtNum(line.before?.isk_a, 1)} A → {fmtNum(line.after?.isk_a, 1)} A</span>
-          <small>Isk = Psk / 0.624 · {loss.conductor}</small>
+          <small>I = P_feeder / 0.624 · {fmtNum(loss.feeder_peak_kw, 1)} → {fmtNum(loss.feeder_peak_after_kw, 1)} kW · {loss.conductor}</small>
         </article>
-        <article>
+        <article data-testid="line-loading">
           <b>Line loading</b>
-          <Gauge value={line.after?.load_pct} label={`of ${loss.ampacity_a} A`} pass={(line.after?.load_pct || 0) <= 100} />
+          <Gauge value={loadPct} label={`of ${loss.ampacity_a} A`} pass={lineOk} />
+          <small>{lineOk ? "Pass · ≤ 100 % of ampacity" : "Fail · segment above 100 %"}</small>
         </article>
         <article>
           <b>Feeder loss</b>
           <span>{fmtNum(feed.before_kw, 3)} → {fmtNum(feed.after_kw, 3)} kW</span>
-          <small>{fmtNum(feed.after_kwh_year, 0)} kWh/year</small>
+          <small>{fmtNum(feed.after_kwh_year, 0)} kWh/year · P × 8760 × F · {feed.span || "TP → customer"}</small>
         </article>
         <article>
           <b>Transformer loss</b>

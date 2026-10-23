@@ -37,14 +37,14 @@ Every opened step uses the same structure:
 | Calculation | Numbers, formula, gauges, map, A/B/C, breaker table, cost table, load/loss |
 | Result | Pass or fail |
 
-Capacity and voltage attach `estimate_load_loss()` from `src/eso_agent/load_loss.py`, which uses `src/line_load.py` tables:
+Capacity and voltage attach `estimate_load_loss()` from `src/eso_agent/load_loss.py`:
 
-- `Psk = ΣP_perm × k(n)`
-- `Isk = Psk / 0.624`
-- `ΔU = L_km × Psk × kU`
-- feeder loss `3 × Isk² × R`
-- transformer loss `P0 + Pk × (S/Sn)²` on 400 kVA
-- energy `P × 8760 × (Psk / Pperm)`
+- feeder current `I = P_feeder / 0.624` using L-200 `meter_max_kw` (not the TP peak)
+- voltage `ΔU = L_km × Psk × kU` with `Psk = ΣP_perm × k(n)` on the TP → customer span
+- feeder loss `3 × I² × R` with `R = r_Ω/km × L_km` on that same span
+- transformer loss `P0 + Pk × (S/Sn)²` on 400 kVA (P0 0.93 kW, Pk 4.60 kW)
+- energy `P_peak × 8760 × (0.3 LF + 0.7 LF²)`
+- line loading fails the flow when any segment is above 100 % of ampacity
 
 The solution step shows a compact before/after summary of the same estimate.
 
