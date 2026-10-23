@@ -23,7 +23,7 @@ export default function TransformerBar({ bar, pass }) {
       <div className="kv">
         <div><b>Before</b><span>{fmtNum(bar.before_kw)} kW</span></div>
         <div><b>After</b><span>{fmtNum(bar.after_kw)} kW {pass ? "· pass" : "· fail"}</span></div>
-        <div><b>Coincident</b><span>{fmtNum(bar.coincident_kw)} kW</span></div>
+        <div><b>Coincident</b><span>{fmtNum(bar.coincident_kw, 2)} kW</span></div>
         <div><b>Added</b><span>{fmtNum(bar.added_kw)} kW</span></div>
       </div>
       <p className="formula">P_after = P_peak + P_request = {fmtNum(bar.before_kw)} + {fmtNum(bar.added_kw)} = {fmtNum(bar.after_kw)} kW ≤ 0.8 × 400 kVA (conservative 80 % gate)</p>
