@@ -1,5 +1,5 @@
 export default function VoltageProfile({ profile = [], limit = 207 }) {
-  if (!profile.length) return <p className="empty">Įtampos profilio nėra.</p>;
+  if (!profile.length) return <p className="empty">No profile.</p>;
   const w = 520, h = 180, p = 28;
   const xs = profile.map((pt) => pt.m);
   const ys = profile.flatMap((pt) => [pt.v_before, pt.v_after]);
@@ -11,8 +11,7 @@ export default function VoltageProfile({ profile = [], limit = 207 }) {
   const path = (key) => profile.map((pt, i) => `${i ? "L" : "M"} ${X(pt.m)} ${Y(pt[key])}`).join(" ");
   return (
     <div className="section">
-      <h3>Įtampos profilis palei liniją</h3>
-      <svg className="chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Įtampa prieš ir po prijungimo">
+      <svg className="chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Voltage before and after">
         <line x1={p} y1={Y(limit)} x2={w - p} y2={Y(limit)} stroke="#e11d48" strokeDasharray="4 4" />
         <text x={w - p} y={Y(limit) - 4} textAnchor="end" fontSize="10" fill="#e11d48">207 V</text>
         <path d={path("v_before")} fill="none" stroke="#94a3b8" strokeWidth="2" />
@@ -24,7 +23,8 @@ export default function VoltageProfile({ profile = [], limit = 207 }) {
           </g>
         ))}
       </svg>
-      <p className="bar-legend"><span>Pilka — prieš</span><span>Žalia — po</span><span>Koralas — prijungimo taškas</span></p>
+      <p className="bar-legend"><span>Grey — before</span><span>Green — after</span><span>Coral — connection</span></p>
+      <p className="formula">V = 230 × (1 − ΣΔU/100) ≥ 207 V</p>
     </div>
   );
 }

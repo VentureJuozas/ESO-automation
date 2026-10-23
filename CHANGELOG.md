@@ -1,5 +1,9 @@
 # Changelog
 
+## Round 11 — ESO helper product cleanup
+
+Single-case English product named **ESO helper**. One hero flow: request → agent steps → engineer approval → Lithuanian TS. Sidebar groups (Application, Connection point, Checks, Solution, Issue). Finished step panels: data source, requirements, calculation, result. Load and loss estimator on capacity, voltage and solution. No scenario list, queue, gallery, customer split, presentation, what-if, or time-saved HUD. No provenance tags or demo banners in the UI. Docs and tests updated.
+
 ## Round 10 — Pitch wrap-up
 
 No product-code change. Pitch facts (`docs/PITCH_FACTS.md`), 1920×1080 screenshot set in `docs/media/`, README wiring, and full LT/EN autoplay backup videos (~5 min 10 s, under 25 MB each) in `docs/media/` and artifacts. Capture helper: `scripts/capture_pitch_assets.mjs`.

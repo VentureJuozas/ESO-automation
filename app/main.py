@@ -53,7 +53,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="ESO prijungimo sąlygos", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="ESO helper", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

@@ -1,12 +1,8 @@
-# Next steps — production roadmap
+# Next steps
 
-Adapters are the map. Each phase replaces one mock with the real ESO system named in the stub.
+Adapters are the map. Each phase replaces one fixture read with the named ESO system.
 
-## After the jury (production)
-
-Round 7 closed the demo loop. Remaining work is swapping adapters, not more canvas chrome.
-
-## Phase 1 — Swap mocks for live reads
+## Phase 1 — Live reads
 
 | Adapter | Connect |
 |---|---|
@@ -18,7 +14,7 @@ Round 7 closed the demo loop. Remaining work is swapping adapters, not more canv
 
 | Adapter | Connect |
 |---|---|
-| Pricing | Signed tariff annex, not 26-E-37934 as orientyras |
+| Pricing | Signed tariff annex, not 26-E-37934 as an orientyras |
 | Registry | Write issued TS + GIS annex to SharePoint |
 | Rules | Technologinės plėtros standartas PDFs (annex 12) |
 
@@ -26,7 +22,7 @@ Round 7 closed the demo loop. Remaining work is swapping adapters, not more canv
 
 - No personal data in prompts, logs, maps or SQLite
 - Sign exports with an ESO key, not only SHA-256
-- Role split: customer mock vs manager desk vs engineer vs auditor
+- Role split: applicant / engineer / auditor
 - Retention aligned with savitarna
 
 ## Phase 4 — Human-in-the-loop policy
@@ -35,9 +31,9 @@ Round 7 closed the demo loop. Remaining work is swapping adapters, not more canv
 - Engineer correction loop then re-issue
 - Sample 100 % of escalations and a rotating % of issued A/B/C
 
-## Phase 5 — Rollout and KPIs
+## Phase 5 — Rollout
 
 - Pilot: one desk on 12-608, shadow mode
-- KPIs: median minutes to draft, % issued without override, in-scope back-test ≥ 90 %, SLA misses, minutes saved (measured)
+- Measure: median minutes to draft, % issued without override, in-scope back-test ≥ 90 %, SLA misses
 
 Do not expand to generation, 10 kV works, or other substations until Phase 1 adapters are real.

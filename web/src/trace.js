@@ -1,8 +1,8 @@
-export const KIND_LT = { llm: "LLM", tool: "Python", human: "Žmogus" };
+export const KIND_EN = { llm: "LLM", tool: "Python", human: "Human" };
 export const KIND_HINT = {
-  llm: "Skaito paraišką arba formuluoja §3. Inžinerijos nesprendžia.",
-  tool: "Deterministinė taisyklė. Python priima sprendimą.",
-  human: "Žmogaus vartai. Be parašo TS neišduodama.",
+  llm: "Reads the request or phrases §3.",
+  tool: "Deterministic rule.",
+  human: "Engineer gate.",
 };
 
 export function classify(toolId, event, catalog = []) {
@@ -18,7 +18,7 @@ function summarise(payload, limit = 180) {
   if (payload == null) return "—";
   if (typeof payload === "string") return payload.length <= limit ? payload : `${payload.slice(0, limit - 1)}…`;
   if (typeof payload !== "object") return String(payload);
-  if (Array.isArray(payload)) return `${payload.length} įrašai`;
+  if (Array.isArray(payload)) return `${payload.length} items`;
   const keys = ["kw", "phases", "id", "label", "feeder", "element_id", "ts_number", "pass", "escalate", "section3"];
   const bits = [];
   for (const k of keys) {
@@ -43,18 +43,16 @@ export function buildTrace(events = [], catalog = []) {
     steps.push({
       step: n,
       tool: ev.tool,
-      title: ev.title_lt || ev.title || meta.title_lt || ev.tool,
+      title: ev.title || meta.title || ev.tool,
       kind,
-      kind_lt: KIND_LT[kind],
-      llm_role: ev.tool === "parse_request" ? "skaitymas" : ev.tool === "draft_ts_section3" ? "formulavimas" : null,
+      kind_en: KIND_EN[kind],
+      llm_role: ev.tool === "parse_request" ? "parse" : ev.tool === "draft_ts_section3" ? "phrase" : null,
       hint: KIND_HINT[kind],
       inputs: ev.inputs || {},
       outputs: ev.outputs || {},
       input_summary: summarise(ev.inputs),
       output_summary: summarise(ev.outputs),
       elapsed_ms: ev.elapsed_ms || 0,
-      source_tags: ev.source_tags || [],
-      rule: meta.rule || "",
       rule_ref: { label: ref.label || meta.rule, local: ref.local, url: ref.url },
       ok: ev.ok !== false,
       type: ev.type,
@@ -69,7 +67,7 @@ export function buildTrace(events = [], catalog = []) {
       llm,
       python,
       human,
-      line: `${llm} LLM kvietimai · ${python} deterministiniai įrankiai · ${human} žmogaus vartai`,
+      line: `${llm} LLM · ${python} Python · ${human} Human`,
     },
   };
 }

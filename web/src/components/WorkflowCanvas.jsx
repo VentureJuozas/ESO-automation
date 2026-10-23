@@ -214,14 +214,14 @@ export default function WorkflowCanvas({
       onPointerCancel={onPointerUp}
       onWheel={onWheel}
       role="application"
-      aria-label="Prijungimo eigos drobė"
+      aria-label="Connection workflow"
       data-kinds={kindOverlay ? "on" : "off"}
     >
       <div className="wf-toolbar" onPointerDown={(e) => e.stopPropagation()}>
-        <button type="button" className="go" onClick={() => zoom(-0.12)} aria-label="Sumažinti">−</button>
+        <button type="button" className="go" onClick={() => zoom(-0.12)} aria-label="Zoom out">−</button>
         <span className="zoom-readout">{Math.round(cam.k * 100)}%</span>
-        <button type="button" className="go" onClick={() => zoom(0.12)} aria-label="Padidinti">+</button>
-        <button type="button" className="go" onClick={fitView}>Talpinti</button>
+        <button type="button" className="go" onClick={() => zoom(0.12)} aria-label="Zoom in">+</button>
+        <button type="button" className="go" onClick={fitView}>Fit</button>
         {mode === "pipeline" && (
           <button
             type="button"
@@ -229,7 +229,7 @@ export default function WorkflowCanvas({
             data-testid="kind-overlay"
             onClick={() => onToggleOverlay?.(!kindOverlay)}
           >
-            LLM / Python / Žmogus
+            LLM / Python / Human
           </button>
         )}
       </div>
@@ -237,7 +237,7 @@ export default function WorkflowCanvas({
         <ul className="kind-legend canvas-legend" data-testid="canvas-kind-legend">
           <li><i className="k-llm" />LLM</li>
           <li><i className="k-tool" />Python</li>
-          <li><i className="k-human" />Žmogus</li>
+          <li><i className="k-human" />Human</li>
         </ul>
       )}
       <div
@@ -304,9 +304,9 @@ export default function WorkflowCanvas({
           const arch = architecture?.layers?.find((l) => l.id === n.id);
           const ev = lastEvent(n.id, events);
           const summary = st === "skip"
-            ? "Praleista"
+            ? "Skipped"
             : mode === "adapters"
-              ? `${adapter?.mode || "mock"} · ${n.caption}`
+              ? n.caption
             : mode === "arch" ? (arch?.note || n.caption) : (nodeSummary(n.id, ev) || n.caption);
           const ports = portMap[n.id] || new Set(["left", "right"]);
           const nk = kindOverlay && mode === "pipeline" ? classify(n.id, ev, architecture?.tools) : "";
@@ -335,13 +335,10 @@ export default function WorkflowCanvas({
                 </span>
               )}
               {st === "stop" && <span className="n8n-pip stop"><Bang /></span>}
-              {st === "skip" && <span className="n8n-pip skip" title="Praleista">–</span>}
+              {st === "skip" && <span className="n8n-pip skip" title="Skipped">–</span>}
               {st === "run" && <span className="n8n-pip run" />}
               {st === "done" && ev?.elapsed_ms != null && (
                 <span className="n8n-ms">{ev.elapsed_ms} ms</span>
-              )}
-              {mode === "adapters" && (
-                <span className={`n8n-ms ad-${adapter?.mode || "mock"}`}>{adapter?.mode || "mock"}</span>
               )}
             </button>
           );

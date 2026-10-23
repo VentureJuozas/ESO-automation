@@ -59,7 +59,57 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .item.on { background: #f3f3f5; }
 .item b { display: block; font-weight: 600; font-size: 13px; }
 .item small { color: var(--muted); font-size: 12px; }
+.sec { margin: 0 0 4px; padding: 2px 0 6px; border-bottom: 1px solid #f0f0f3; }
+.sec:last-child { border-bottom: 0; }
+.sec-btn.open { background: #f6f6f7; }
+.st-run { color: var(--coral) !important; font-weight: 600; }
+.st-done { color: var(--ok) !important; }
+.st-stop { color: var(--warn) !important; font-weight: 600; }
+.st-wait { color: var(--muted); }
 .side-note { padding: 14px 16px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.request-bar {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  padding: 8px 20px; background: #fff; border-bottom: 1px solid var(--line);
+}
+.request-bar div { min-width: 0; }
+.request-bar b { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
+.request-bar span { font-family: var(--mono); font-size: 12.5px; }
+.panel-block { margin: 0 0 16px; }
+.panel-block h3 {
+  margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.panel-block blockquote {
+  margin: 0 0 6px; padding: 10px 12px; background: #f8f8fa; border-left: 3px solid var(--ink);
+  border-radius: 0 8px 8px 0; font-size: 13px;
+}
+.rule-ref { margin: 0; font-size: 11px; color: var(--muted); font-weight: 600; }
+.formula { margin: 8px 0 0; font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.badge.result.pass, .result-pill.pass { color: var(--ok); border-color: #b8e4cc; background: #f1fbf6; }
+.badge.result.fail, .result-pill.fail { color: var(--bad); border-color: #fecdd3; background: #fff1f2; }
+.badge.result.wait, .result-pill.wait { color: var(--warn); border-color: #fde68a; background: #fffbeb; }
+.badge.result.run, .result-pill.run { color: var(--coral); border-color: #ffd4cc; background: #fff5f3; }
+.badge.result.idle, .result-pill.idle { color: var(--muted); }
+.result-pill {
+  display: inline-flex; align-items: center; border-radius: 999px;
+  padding: 4px 10px; font-size: 12px; font-weight: 700; border: 1px solid var(--line); margin: 0;
+}
+.load-loss { margin-top: 12px; }
+.load-loss h3 {
+  margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.ll-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.ll-grid article { background: #f6f6f7; border-radius: 10px; padding: 10px; }
+.ll-grid b { display: block; font-size: 11px; color: var(--muted); }
+.ll-grid span { display: block; font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+.ll-grid small { color: var(--muted); font-size: 11px; }
+.ll-gauge { margin-top: 6px; }
+.ll-gauge-bar { height: 10px; background: #e8e8ee; border-radius: 99px; overflow: hidden; }
+.ll-gauge-bar i { display: block; height: 100%; background: var(--ok); }
+.ll-gauge.bad .ll-gauge-bar i { background: var(--bad); }
+.ll-gauge-meta { display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px; }
+.load-loss.compact .ll-grid { grid-template-columns: 1fr 1fr; }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--canvas); }
 .top {
@@ -291,7 +341,7 @@ table.cost td:last-child { text-align: right; font-family: var(--mono); font-siz
 .roadmap li { margin: 4px 0; }
 
 @media (max-width: 1100px) {
-  .work, .grid2, .ts-split, .cards, .form, .roadmap { grid-template-columns: 1fr; }
+  .work, .grid2, .ts-split, .cards, .form, .roadmap, .request-bar, .ll-grid { grid-template-columns: 1fr; }
   .side { width: 232px; }
 }
 @media (max-width: 800px) {
@@ -413,7 +463,7 @@ table.cost td:last-child { text-align: right; font-family: var(--mono); font-siz
 .n8n-node.run .n8n-port, .n8n-port.live { border-color: var(--coral); background: var(--coral); }
 
 .inspector {
-  position: absolute; top: 8px; right: 12px; bottom: 8px; width: min(420px, 42%);
+  position: absolute; top: 8px; right: 12px; bottom: 8px; width: min(520px, 46%);
   background: #fff; min-width: 0; min-height: 0;
   display: flex; flex-direction: column;
   border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);

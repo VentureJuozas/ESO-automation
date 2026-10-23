@@ -1,4 +1,4 @@
-import { fmtLt } from "../../steps.js";
+import { fmtNum } from "../../steps.js";
 
 export default function TransformerBar({ bar, pass }) {
   if (!bar) return null;
@@ -6,9 +6,8 @@ export default function TransformerBar({ bar, pass }) {
   const pct = (v) => `${Math.min(100, (v / max) * 100)}%`;
   return (
     <div className="section">
-      <h3>Transformatoriaus apkrova</h3>
       <div className="bar-wrap">
-        <div className="bar" role="img" aria-label="Transformatoriaus apkrova prieš ir po">
+        <div className="bar" role="img" aria-label="Transformer load">
           <i style={{ width: pct(bar.before_kw) }} />
           <i className="after" style={{ width: pct(bar.after_kw) }} />
           <span className="mark80" style={{ left: pct(bar.limit_80_kw) }} />
@@ -16,17 +15,18 @@ export default function TransformerBar({ bar, pass }) {
         </div>
         <div className="bar-legend">
           <span>0</span>
-          <span>80 % {fmtLt(bar.limit_80_kw, 0)} kW</span>
-          <span>90 % {fmtLt(bar.limit_90_kw, 0)}</span>
-          <span>{fmtLt(max, 0)} kW</span>
+          <span>80 % {fmtNum(bar.limit_80_kw, 0)} kW</span>
+          <span>90 % {fmtNum(bar.limit_90_kw, 0)}</span>
+          <span>{fmtNum(max, 0)} kW</span>
         </div>
       </div>
       <div className="kv">
-        <div><b>Prieš</b><span>{fmtLt(bar.before_kw)} kW</span></div>
-        <div><b>Po (viršūnė + paraiška)</b><span>{fmtLt(bar.after_kw)} kW {pass ? "· telpa" : "· viršija"}</span></div>
-        <div><b>Sutaptinė su nesutapimo k.</b><span>{fmtLt(bar.coincident_kw)} kW</span></div>
-        <div><b>Pridėta</b><span>{fmtLt(bar.added_kw)} kW</span></div>
+        <div><b>Before</b><span>{fmtNum(bar.before_kw)} kW</span></div>
+        <div><b>After</b><span>{fmtNum(bar.after_kw)} kW {pass ? "· pass" : "· fail"}</span></div>
+        <div><b>Coincident</b><span>{fmtNum(bar.coincident_kw)} kW</span></div>
+        <div><b>Added</b><span>{fmtNum(bar.added_kw)} kW</span></div>
       </div>
+      <p className="formula">P_after = P_peak + P_request = {fmtNum(bar.before_kw)} + {fmtNum(bar.added_kw)} = {fmtNum(bar.after_kw)} kW ≤ 0.8 × 400 kVA</p>
     </div>
   );
 }

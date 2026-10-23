@@ -1,37 +1,25 @@
-import { fmtLt } from "../../steps.js";
-import SourceTags from "../SourceTags.jsx";
+import { fmtNum } from "../../steps.js";
 
 export function ReliabilityCard({ cutIn, n1, backup }) {
   return (
     <div className="section">
-      <h3>Patikimumas</h3>
       <div className="viz-cards">
         <article>
-          <b>N-1 transformatoriai</b>
-          <span>{n1?.transformer_count ?? "—"} vnt.</span>
-          <small>Rezervas {fmtLt(n1?.reserve, 0)} kW</small>
+          <b>N-1 transformers</b>
+          <span>{n1?.transformer_count ?? "—"}</span>
+          <small>Reserve {fmtNum(n1?.reserve, 0)} kW</small>
         </article>
         <article>
-          <b>Linija</b>
-          <span>{backup?.radial ? "Radialė" : "Žiedas"}</span>
-          <small>Atsarginis kelias neprarandamas</small>
+          <b>Feeder</b>
+          <span>{backup?.radial ? "Radial" : "Ring"}</span>
+          <small>Backup path unchanged</small>
         </article>
         <article className={cutIn?.applies ? "warn" : "ok"}>
-          <b>Įsipjovimas</b>
-          <span>{cutIn?.applies ? `${cutIn.affected_customers} taškai` : "Neatjungia"}</span>
-          <small>{cutIn?.applies ? "Be adresų, tik skaitikliai linijoje" : "Sprendinys A/B kaimynų neatjungia"}</small>
+          <b>Cut-in</b>
+          <span>{cutIn?.applies ? `${cutIn.affected_customers} points` : "None"}</span>
+          <small>{cutIn?.applies ? "Planned outage on this feeder" : "Pole KAS does not isolate neighbours"}</small>
         </article>
       </div>
-      {cutIn?.applies && (
-        <table className="cost">
-          <tbody>
-            {(cutIn.groups || []).map((g) => (
-              <tr key={g.id}><td>{g.kind === "pole" ? "Atrama" : "Spinta"} {g.id}</td><td>{g.points}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <p className="map-note"><SourceTags tags={["real", "rule"]} /></p>
     </div>
   );
 }
@@ -41,25 +29,20 @@ export function FutureCard({ gauge, outputs }) {
   const ok = (g.headroom_kw ?? outputs?.headroom_kw) >= 0;
   return (
     <div className="section">
-      <h3>Ateitis · atsarga iki 80 %</h3>
       <div className="viz-cards">
         <article className={ok ? "ok" : "bad"}>
-          <b>Likutis</b>
-          <span>{fmtLt(g.headroom_kw ?? outputs?.headroom_kw)} kW</span>
-          <small>{ok ? "Telpa su rezervuotomis" : "Nepraeina — rezervas neigiamas"}</small>
+          <b>Headroom to 80 %</b>
+          <span>{fmtNum(g.headroom_kw ?? outputs?.headroom_kw)} kW</span>
         </article>
         <article>
-          <b>Po prijungimo</b>
-          <span>{fmtLt(g.after_kw)} kW</span>
-          <small>Viršūnė + paraiška</small>
+          <b>After</b>
+          <span>{fmtNum(g.after_kw)} kW</span>
         </article>
         <article>
-          <b>Rezervuota</b>
-          <span>{fmtLt(g.pending_kw, 0)} kW</span>
-          <small>Demo: 0 kW (sintetinis)</small>
+          <b>Reserved</b>
+          <span>{fmtNum(g.pending_kw, 0)} kW</span>
         </article>
       </div>
-      <p className="map-note"><SourceTags tags={["real", "synthetic", "rule"]} /></p>
     </div>
   );
 }

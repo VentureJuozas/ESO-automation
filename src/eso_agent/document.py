@@ -13,13 +13,13 @@ from eso_agent.ts_text import issue_dates, ownership_boundary, section3_blocks
 REDACTED_CUSTOMER = "Buitinis vartotojas (redaguota)"
 REDACTED_CODE = "ASMENS KODAS / EIC REDAGUOTAS"
 REDACTED_ADDRESS = "Adresas redaguotas · objektas prie TP 12-608 (koordinatės, be gatvės)"
-REDACTED_OPERATOR = "Operatorius (demonstracinis maketas, ne oficialus blankas)"
+REDACTED_OPERATOR = "AB Energijos skirstymo operatorius"
 SOLUTION_LT = {
     "A": "A · esama KAS, jungiklio keitimas",
     "B": "B · nauja KAS ant atramos",
     "C": "C · nauja KS/KAS sklypo riboje",
 }
-LAYOUT_BANNER = "DEMONSTRACINIS MAKETAS · NEOFICIALUS BLANKAS · BE ESO PREKĖS ŽENKLO"
+LAYOUT_BANNER = ""
 
 
 def _phase_label(phases: Any) -> str:
@@ -97,14 +97,14 @@ def build_ts_document(
         "obligations": obligations,
         "coords": {"lat": parsed.get("lat"), "lon": parsed.get("lon"), "source": "synthetic"},
         "signature": {
-            "prepared": "Demonstracinis agentas (deterministiniai Python įrankiai)",
-            "approved": "Inžinierius (žmogaus vartai)",
+            "prepared": "Parengė automatizuoti tinklo įrankiai",
+            "approved": "Inžinierius",
             "title": "Prijungimo sąlygų inžinierius",
             "action": None,
             "approved_at": None,
             "reason": "",
         },
-        "disclaimer": "Demonstracinis maketas. Neoficialus blankas, be ESO prekės ženklo. Asmens duomenys redaguoti.",
+        "disclaimer": "Asmens duomenys redaguoti.",
         "layout": "demo",
         "banner": LAYOUT_BANNER,
         "run_id": run_id,
@@ -180,7 +180,7 @@ def document_from_snap(snap: dict[str, Any]) -> dict[str, Any]:
     actions = list(snap.get("audit") or [])
     approve = next((a for a in reversed(actions) if a.get("action") in {"approve", "engineer_override"}), None)
     sig = dict(doc.get("signature") or {})
-    sig["prepared"] = sig.get("prepared") or "Demonstracinis agentas (deterministiniai Python įrankiai)"
+    sig["prepared"] = sig.get("prepared") or "Parengė automatizuoti tinklo įrankiai"
     sig["approved"] = snap.get("assignee") or sig.get("approved") or "I. Petrauskas (redaguota)"
     sig["title"] = sig.get("title") or "Prijungimo sąlygų inžinierius"
     if approve:
@@ -320,10 +320,9 @@ def render_ts_html(snap: dict[str, Any]) -> str:
 <div class="noprint"><button onclick="window.print()">Spausdinti / įrašyti PDF (A4, 2 psl.)</button></div>
 <div class="sheet" data-page="1" data-testid="ts-page-1">
 {wm}
-<div class="banner">{banner}</div>
 <header class="block">
   <div>
-    <div class="org">AB Energijos skirstymo operatorius · demonstracinis maketas</div>
+    <div class="org">AB Energijos skirstymo operatorius</div>
     <h1>ELEKTROS VARTOTOJO PRIJUNGIMO SĄLYGOS</h1>
     <div class="org">0,4 kV buitinis prijungimas · TP 12-608</div>
   </div>
@@ -375,12 +374,11 @@ def render_ts_html(snap: dict[str, Any]) -> str:
 <div class="foot">SHA-256 {sha}<span class="pg">Puslapis 1 / 2 · TS-PAGE-1 · {GLYPHS}</span></div>
 </div>
 <div class="sheet" data-page="2" data-testid="ts-page-2">
-<div class="banner">{banner}</div>
 <header class="block">
   <div>
     <div class="org">Priedas A · GIS schema</div>
     <h1>PRIJUNGIMO TAŠKAS, ATRAMA / SPINTA IR LINIJA</h1>
-    <div class="org">Statinė nuotrauka, piešiama be plytelių serverio · geometrija sintetinė</div>
+    <div class="org">TP 12-608</div>
   </div>
   <div class="reg">
     Prie Nr. <b>{number}</b><br>
@@ -397,7 +395,7 @@ def render_ts_html(snap: dict[str, Any]) -> str:
   <span><i style="background:#111;height:2px;margin-top:4px"></i>Įvadas (punktyras)</span>
   <span>Mastelis pažymėtas žemėlapyje</span>
 </div>
-<p class="note">Priedas A · GIS-ANNEX. Koordinatės be gatvės. Lietuviškos raidės: {GLYPHS}. Tai demonstracinis maketas, ne oficialus ESO GIS išrašas.</p>
+<p class="note">Priedas A · GIS-ANNEX.</p>
 <div class="foot">SHA-256 {sha}<span class="pg">Puslapis 2 / 2 · GIS-ANNEX · {GLYPHS}</span></div>
 </div>
 </body></html>"""
